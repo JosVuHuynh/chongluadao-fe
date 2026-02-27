@@ -394,24 +394,37 @@ export function LookupPage({ initialQuery = '' }: LookupPageProps) {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4 mb-4">
+                   <div className="flex items-start justify-between gap-4 mb-4">
                         <div>
-                          <h3 className="text-[#1F2937] mb-2">{scam.phone}</h3>
+                          <h3 className="text-[#1F2937] mb-2">
+                            {scam.scammerName ? scam.scammerName : scam.phone}
+                          </h3>
+
                           <div className="flex items-center gap-2 mb-2">
                             {getStatusBadge(displayStatus)}
-                            <Badge variant="outline" className="border-[#E5E7EB] text-[#6B7280]">
+                            {/* <Badge variant="outline" className="border-[#E5E7EB] text-[#6B7280]">
                               Số điện thoại
-                            </Badge>
+                            </Badge> */}
                           </div>
+
                           <div className="space-y-1 text-sm text-[#6B7280]">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              <span>{scam.phone}</span>
-                            </div>
+                            {/* Nếu có scammerName thì show phone bên dưới */}
+                            {scam.scammerName ? (
+                              scam.phone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4" />
+                                  <span>{scam.phone}</span>
+                                </div>
+                              )
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4" />
+                                <span>{scam.phone}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-
                       {/* Stats */}
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4 p-4 bg-[#F9FAFB] rounded-xl">
                         <div>
@@ -454,27 +467,14 @@ export function LookupPage({ initialQuery = '' }: LookupPageProps) {
                             ...scam, 
                             type: 'person', 
                             status: displayStatus,
-                            name: scam.phone,
+                            name: scam.scammerName || scam.phone,
                             reportCount: scam.totalReports,
                             lastReport: formattedDate
                           })}
                         >
                           Xem chi tiết
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="rounded-xl border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-white"
-                          onClick={() => handleReport({ 
-                            ...scam, 
-                            type: 'person', 
-                            status: displayStatus,
-                            name: scam.phone
-                          })}
-                        >
-                          <AlertTriangle className="h-4 w-4 mr-2" />
-                          Tố cáo thêm
-                        </Button>
+                        
                       </div>
                     </div>
                   </div>
@@ -782,19 +782,7 @@ export function LookupPage({ initialQuery = '' }: LookupPageProps) {
                 </>
               )}
 
-              {/* Action Button - Hide for verified businesses */}
-              {!(selectedItem.type === 'business' && selectedItem.status === 'verified') && (
-                <Button 
-                  onClick={() => {
-                    setDetailDialogOpen(false);
-                    setReportDialogOpen(true);
-                  }}
-                  className="w-full bg-[#DC2626] text-white hover:bg-[#DC2626]/90 rounded-xl"
-                >
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Tố cáo thêm
-                </Button>
-              )}
+           
             </div>
           )}
         </DialogContent>

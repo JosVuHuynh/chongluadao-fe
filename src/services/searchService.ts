@@ -21,6 +21,7 @@ export interface Business {
 
 export interface Scam {
   phone: string;
+  scammerName: string;
   status: 'WARNING' | 'DANGER' | 'SAFE';
   reason: string;
   totalReports: number;

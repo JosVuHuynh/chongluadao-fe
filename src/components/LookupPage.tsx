@@ -1,4 +1,4 @@
-import { Search, AlertTriangle, CheckCircle, Building2, User, Phone, Mail, Calendar, Star, Globe, MapPin, ExternalLink, Loader2, CheckCircle2, Check, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle, Building2, User, Phone, Mail, Calendar, Star, Globe, MapPin, ExternalLink, Loader2, CheckCircle2, Check, Link as LinkIcon, Image as ImageIcon, CreditCard } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
@@ -222,7 +222,7 @@ export function LookupPage({ initialQuery = '' }: LookupPageProps) {
 
         {/* Search Results */}
         {hasSearched && (businesses.length > 0 || scams.length > 0) && (
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             <div className="flex items-center justify-between">
               <h2 className="text-[#086644]">Kết quả tra cứu</h2>
               <span className="text-sm text-[#6b7280]">
@@ -525,269 +525,333 @@ export function LookupPage({ initialQuery = '' }: LookupPageProps) {
       </div>
 
       {/* Detail Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-[#1F2937]">Thông tin chi tiết</DialogTitle>
-          </DialogHeader>
-          {selectedItem && (
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="flex items-start gap-4">
-                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0 ${
-                  selectedItem.status === 'verified' ? 'bg-[#D1FAE5]' :
-                  selectedItem.status === 'warning' ? 'bg-[#FEF3C7]' :
-                  'bg-[#FEE2E2]'
-                }`}>
-                  {selectedItem.type === 'business' ? (
-                    <Building2 className={`h-8 w-8 ${getStatusColor(selectedItem.status)}`} />
-                  ) : (
-                    <User className={`h-8 w-8 ${getStatusColor(selectedItem.status)}`} />
+   {/* Detail Dialog */}
+<Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+  <DialogContent
+    className="
+    !w-[92vw] !max-w-[92vw]
+    sm:!w-auto sm:!max-w-[600px]
+    max-h-[90vh] overflow-y-auto overflow-x-hidden
+    p-4 sm:p-6
+    "
+  >
+    <DialogHeader>
+      <DialogTitle className="text-[#1F2937]">Thông tin chi tiết</DialogTitle>
+    </DialogHeader>
+
+    {selectedItem && (
+      <div className="space-y-6 min-w-0">
+        {/* Header */}
+        <div className="flex items-start gap-4 min-w-0">
+          <div
+            className={`flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0 ${
+              selectedItem.status === 'verified'
+                ? 'bg-[#D1FAE5]'
+                : selectedItem.status === 'warning'
+                ? 'bg-[#FEF3C7]'
+                : 'bg-[#FEE2E2]'
+            }`}
+          >
+            {selectedItem.type === 'business' ? (
+              <Building2 className={`h-8 w-8 ${getStatusColor(selectedItem.status)}`} />
+            ) : (
+              <User className={`h-8 w-8 ${getStatusColor(selectedItem.status)}`} />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-2 mb-2 min-w-0">
+              <h3 className="text-[#1F2937] break-words min-w-0 leading-snug">
+                {selectedItem.name}
+              </h3>
+
+              {/* Verified Badge */}
+              {selectedItem.verifiedBadge === 1 && selectedItem.status === 'verified' && (
+                <div className="relative inline-flex items-center justify-center h-5 w-5 bg-[#1877F2] rounded-full flex-shrink-0 mt-0.5">
+                  <Check className="h-3 w-3 text-white stroke-[3]" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {getStatusBadge(selectedItem.status)}
+              <Badge variant="outline" className="border-[#E5E7EB] text-[#6B7280]">
+                {selectedItem.type === 'business' ? 'Doanh nghiệp' : 'Cá nhân'}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Contact Info */}
+        <div className="space-y-3 min-w-0">
+          <h4 className="text-sm text-[#6B7280]">Thông tin liên hệ</h4>
+
+          <div className="space-y-2 min-w-0">
+            {selectedItem.phone && (
+              <div className="flex items-center gap-3 text-sm min-w-0">
+                <Phone className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                <span className="text-[#1F2937] break-words min-w-0">{selectedItem.phone}</span>
+              </div>
+            )}
+
+               {selectedItem.bankAccount && (
+                    <div className="flex items-center gap-3 text-sm min-w-0">
+                      <CreditCard className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                      <span className="text-[#1F2937] break-words min-w-0">
+                        {selectedItem.bankAccount}
+                      </span>
+                    </div>
                   )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-[#1F2937]">{selectedItem.name}</h3>
-                    {/* Verified Badge in Dialog - Facebook style: Blue circle with white checkmark */}
-                    {selectedItem.verifiedBadge === 1 && selectedItem.status === 'verified' && (
-                      <div className="relative inline-flex items-center justify-center h-5 w-5 bg-[#1877F2] rounded-full flex-shrink-0">
-                        <Check className="h-3 w-3 text-white stroke-[3]" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(selectedItem.status)}
-                    <Badge variant="outline" className="border-[#E5E7EB] text-[#6B7280]">
-                      {selectedItem.type === 'business' ? 'Doanh nghiệp' : 'Cá nhân'}
-                    </Badge>
-                  </div>
-                </div>
+            {selectedItem.email && (
+              <div className="flex items-center gap-3 text-sm min-w-0">
+                <Mail className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                <span className="text-[#1F2937] break-words min-w-0">{selectedItem.email}</span>
+              </div>
+            )}
+
+            {selectedItem.website && (
+              <div className="flex items-center gap-3 text-sm min-w-0">
+                <Globe className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                <a
+                  href={`https://${selectedItem.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#086644] hover:underline inline-flex items-center gap-1 min-w-0 break-all"
+                >
+                  <span className="min-w-0 break-all">{selectedItem.website}</span>
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
+              </div>
+            )}
+
+            {selectedItem.address && (
+              <div className="flex items-center gap-3 text-sm min-w-0">
+                <MapPin className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                <span className="text-[#1F2937] break-words min-w-0">{selectedItem.address}</span>
+              </div>
+            )}
+
+            {selectedItem.taxCode && (
+              <div className="flex items-center gap-3 text-sm min-w-0">
+                <Building2 className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                <span className="text-[#1F2937] break-words min-w-0">
+                  MST: {selectedItem.taxCode}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+          <div className="p-4 bg-[#F9FAFB] rounded-xl min-w-0">
+            <p className="text-xs text-[#6B7280] mb-1">Đánh giá</p>
+            <div className="flex items-center gap-1 min-w-0">
+              <span className={`text-2xl ${getStatusColor(selectedItem.status)}`}>
+                {selectedItem.rating}
+              </span>
+              <Star className="h-5 w-5 text-[#F59E0B] fill-current flex-shrink-0" />
+            </div>
+          </div>
+
+          {selectedItem.type !== 'business' && (
+            <>
+              <div className="p-4 bg-[#F9FAFB] rounded-xl min-w-0">
+                <p className="text-xs text-[#6B7280] mb-1">Số tố cáo</p>
+                <p
+                  className={`text-2xl ${
+                    selectedItem.reportCount > 0 ? 'text-[#DC2626]' : 'text-[#1F2937]'
+                  }`}
+                >
+                  {selectedItem.reportCount}
+                </p>
               </div>
 
-              <Separator />
-
-              {/* Contact Info */}
-              <div className="space-y-3">
-                <h4 className="text-sm text-[#6B7280]">Thông tin liên hệ</h4>
-                <div className="space-y-2">
-                  {selectedItem.phone && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Phone className="h-4 w-4 text-[#6B7280]" />
-                      <span className="text-[#1F2937]">{selectedItem.phone}</span>
-                    </div>
-                  )}
-                  {selectedItem.email && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Mail className="h-4 w-4 text-[#6B7280]" />
-                      <span className="text-[#1F2937]">{selectedItem.email}</span>
-                    </div>
-                  )}
-                  {selectedItem.website && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Globe className="h-4 w-4 text-[#6B7280]" />
-                      <a href={`https://${selectedItem.website}`} target="_blank" rel="noopener noreferrer" className="text-[#086644] hover:underline flex items-center gap-1">
-                        {selectedItem.website}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  )}
-                  {selectedItem.address && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <MapPin className="h-4 w-4 text-[#6B7280]" />
-                      <span className="text-[#1F2937]">{selectedItem.address}</span>
-                    </div>
-                  )}
-                  {selectedItem.taxCode && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Building2 className="h-4 w-4 text-[#6B7280]" />
-                      <span className="text-[#1F2937]">MST: {selectedItem.taxCode}</span>
-                    </div>
-                  )}
-                </div>
+              <div className="p-4 bg-[#F9FAFB] rounded-xl min-w-0">
+                <p className="text-xs text-[#6B7280] mb-1">Tố cáo gần nhất</p>
+                <p className="text-[#1F2937] break-words">{selectedItem.lastReport}</p>
               </div>
+            </>
+          )}
 
-              <Separator />
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-[#F9FAFB] rounded-xl">
-                  <p className="text-xs text-[#6B7280] mb-1">Đánh giá</p>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-2xl ${getStatusColor(selectedItem.status)}`}>{selectedItem.rating}</span>
-                    <Star className="h-5 w-5 text-[#F59E0B] fill-current" />
-                  </div>
-                </div>
-                {/* Hide report count and last report for businesses */}
-                {selectedItem.type !== 'business' && (
-                  <>
-                    <div className="p-4 bg-[#F9FAFB] rounded-xl">
-                      <p className="text-xs text-[#6B7280] mb-1">Số tố cáo</p>
-                      <p className={`text-2xl ${selectedItem.reportCount > 0 ? 'text-[#DC2626]' : 'text-[#1F2937]'}`}>
-                        {selectedItem.reportCount}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-[#F9FAFB] rounded-xl">
-                      <p className="text-xs text-[#6B7280] mb-1">Tố cáo gần nhất</p>
-                      <p className="text-[#1F2937]">{selectedItem.lastReport}</p>
-                    </div>
-                  </>
-                )}
-                {/* Show verification date for businesses */}
-                {selectedItem.type === 'business' && selectedItem.verifiedDate && (
-                  <div className="p-4 bg-[#F9FAFB] rounded-xl">
-                    <p className="text-xs text-[#6B7280] mb-1">Ngày xác thực</p>
-                    <p className="text-[#1F2937]">{selectedItem.verifiedDate}</p>
-                  </div>
-                )}
-                <div className="p-4 bg-[#F9FAFB] rounded-xl">
-                  <p className="text-xs text-[#6B7280] mb-1">Trạng thái</p>
-                  <p className={getStatusColor(selectedItem.status)}>
-                    {selectedItem.status === 'verified' ? 'Uy tín' : selectedItem.status === 'warning' ? 'Cảnh báo' : 'Nguy hiểm'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selectedItem.description && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <h4 className="text-sm text-[#6B7280]">Mô tả</h4>
-                    <p className="text-sm text-[#1F2937]">{selectedItem.description}</p>
-                  </div>
-                </>
-              )}
-
-              {/* Services */}
-              {selectedItem.services && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <h4 className="text-sm text-[#6B7280]">Dịch vụ</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedItem.services.map((service: string, index: number) => (
-                        <Badge key={index} variant="outline" className="border-[#086644] text-[#086644]">
-                          {service}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Warning */}
-              {selectedItem.reason && (
-                <>
-                  <Separator />
-                  <div className="p-4 bg-[#FEF3C7] rounded-xl border border-[#FCD34D]">
-                    <div className="flex items-start gap-2 mb-3">
-                      <AlertTriangle className="h-5 w-5 text-[#F59E0B] mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h4 className="text-sm text-[#92400E] mb-1">Cảnh báo</h4>
-                        <p className="text-sm text-[#92400E]">{selectedItem.reason}</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Evidence Images - Only for scams/persons */}
-              {selectedItem.type === 'person' && selectedItem.evidenceUrls && selectedItem.evidenceUrls.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4 text-[#6B7280]" />
-                      <h4 className="text-sm text-[#6B7280]">Ảnh bằng chứng ({selectedItem.evidenceUrls.length})</h4>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {selectedItem.evidenceUrls.map((url: string, index: number) => (
-                        <a
-                          key={index}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="relative aspect-square rounded-xl overflow-hidden bg-[#F9FAFB] hover:opacity-80 transition-opacity group"
-                        >
-                          <img
-                            src={url}
-                            alt={`Bằng chứng ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Fallback if image fails to load
-                              e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23F3F4F6" width="100" height="100"/%3E%3Ctext fill="%239CA3AF" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
-                            }}
-                          />
-                          {/* Overlay on hover */}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <ExternalLink className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Related Links - Only for scams/persons */}
-              {selectedItem.type === 'person' && selectedItem.relatedLinks && selectedItem.relatedLinks.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <LinkIcon className="h-4 w-4 text-[#6B7280]" />
-                      <h4 className="text-sm text-[#6B7280]">Liên kết liên quan</h4>
-                    </div>
-                    <div className="space-y-2">
-                      {selectedItem.relatedLinks.map((link: string, index: number) => (
-                        <a
-                          key={index}
-                          href={link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-lg hover:bg-[#E5E7EB] transition-colors group"
-                        >
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#086644]/10 flex-shrink-0">
-                            <Globe className="h-4 w-4 text-[#086644]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#086644] group-hover:underline truncate">{link}</p>
-                          </div>
-                          <ExternalLink className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Reports List */}
-              {selectedItem.reports && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <h4 className="text-sm text-[#6B7280]">Lịch sử tố cáo</h4>
-                    <div className="space-y-2">
-                      {selectedItem.reports.map((report: any, index: number) => (
-                        <div key={index} className="p-3 bg-[#F9FAFB] rounded-lg">
-                          <div className="flex items-start justify-between mb-1">
-                            <span className="text-sm text-[#1F2937]">{report.type}</span>
-                            <span className="text-xs text-[#6B7280]">{report.date}</span>
-                          </div>
-                          <p className="text-xs text-[#6B7280]">Người tố cáo: {report.reporter}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-           
+          {selectedItem.type === 'business' && selectedItem.verifiedDate && (
+            <div className="p-4 bg-[#F9FAFB] rounded-xl min-w-0">
+              <p className="text-xs text-[#6B7280] mb-1">Ngày xác thực</p>
+              <p className="text-[#1F2937] break-words">{selectedItem.verifiedDate}</p>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
 
+          <div className="p-4 bg-[#F9FAFB] rounded-xl min-w-0">
+            <p className="text-xs text-[#6B7280] mb-1">Trạng thái</p>
+            <p className={getStatusColor(selectedItem.status)}>
+              {selectedItem.status === 'verified'
+                ? 'Uy tín'
+                : selectedItem.status === 'warning'
+                ? 'Cảnh báo'
+                : 'Nguy hiểm'}
+            </p>
+          </div>
+        </div>
+
+        {/* Description */}
+        {selectedItem.description && (
+          <>
+            <Separator />
+            <div className="space-y-3 min-w-0">
+              <h4 className="text-sm text-[#6B7280]">Mô tả</h4>
+              <p className="text-sm text-[#1F2937] break-words">{selectedItem.description}</p>
+            </div>
+          </>
+        )}
+
+        {/* Services */}
+        {selectedItem.services && (
+          <>
+            <Separator />
+            <div className="space-y-3 min-w-0">
+              <h4 className="text-sm text-[#6B7280]">Dịch vụ</h4>
+              <div className="flex flex-wrap gap-2 min-w-0">
+                {selectedItem.services.map((service: string, index: number) => (
+                  <Badge key={index} variant="outline" className="border-[#086644] text-[#086644]">
+                    {service}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Warning */}
+        {selectedItem.reason && (
+          <>
+            <Separator />
+            <div className="p-4 bg-[#FEF3C7] rounded-xl border border-[#FCD34D] min-w-0">
+              <div className="flex items-start gap-2 mb-3 min-w-0">
+                <AlertTriangle className="h-5 w-5 text-[#F59E0B] mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <h4 className="text-sm text-[#92400E] mb-1">Cảnh báo</h4>
+                  <p className="text-sm text-[#92400E] break-words">{selectedItem.reason}</p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Evidence Images - Only for scams/persons */}
+        {selectedItem.type === 'person' &&
+          selectedItem.evidenceUrls &&
+          selectedItem.evidenceUrls.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <ImageIcon className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                  <h4 className="text-sm text-[#6B7280] break-words min-w-0">
+                    Ảnh bằng chứng ({selectedItem.evidenceUrls.length})
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {selectedItem.evidenceUrls.map((url: string, index: number) => (
+                    <a
+                      key={index}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative aspect-square rounded-xl overflow-hidden bg-[#F9FAFB] hover:opacity-80 transition-opacity group"
+                    >
+                      <img
+                        src={url}
+                        alt={`Bằng chứng ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src =
+                            'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23F3F4F6" width="100" height="100"/%3E%3Ctext fill="%239CA3AF" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <ExternalLink className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+        {/* Related Links - Only for scams/persons */}
+        {selectedItem.type === 'person' &&
+          selectedItem.relatedLinks &&
+          selectedItem.relatedLinks.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <LinkIcon className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                  <h4 className="text-sm text-[#6B7280]">Liên kết liên quan</h4>
+                </div>
+
+                <div className="space-y-2 min-w-0">
+                  {selectedItem.relatedLinks.map((link: string, index: number) => (
+                    <a
+                      key={index}
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-lg hover:bg-[#E5E7EB] transition-colors group min-w-0"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#086644]/10 flex-shrink-0">
+                        <Globe className="h-4 w-4 text-[#086644]" />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-[#086644] group-hover:underline truncate">
+                          {link}
+                        </p>
+                      </div>
+
+                      <ExternalLink className="h-4 w-4 text-[#6B7280] flex-shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+        {/* Reports List */}
+        {selectedItem.reports && (
+          <>
+            <Separator />
+            <div className="space-y-3 min-w-0">
+              <h4 className="text-sm text-[#6B7280]">Lịch sử tố cáo</h4>
+              <div className="space-y-2 min-w-0">
+                {selectedItem.reports.map((report: any, index: number) => (
+                  <div key={index} className="p-3 bg-[#F9FAFB] rounded-lg min-w-0">
+                    <div className="flex items-start justify-between mb-1 gap-3 min-w-0">
+                      <span className="text-sm text-[#1F2937] break-words min-w-0">
+                        {report.type}
+                      </span>
+                      <span className="text-xs text-[#6B7280] flex-shrink-0">
+                        {report.date}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#6B7280] break-words">
+                      Người tố cáo: {report.reporter}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
       {/* Report Dialog */}
       <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -867,7 +931,7 @@ export function LookupPage({ initialQuery = '' }: LookupPageProps) {
               </Button>
               <Button
                 onClick={() => {
-                  // Handle submit
+                  // Handle submit,a
                   setReportDialogOpen(false);
                 }}
                 className="flex-1 bg-[#DC2626] text-white hover:bg-[#DC2626]/90 rounded-xl"

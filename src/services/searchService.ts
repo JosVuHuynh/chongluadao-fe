@@ -23,6 +23,8 @@ export interface Scam {
   phone: string;
   scammerName: string;
   status: 'WARNING' | 'DANGER' | 'SAFE';
+  bankAccount: string;
+  description: string;
   reason: string;
   totalReports: number;
   latestReportedAt: string;

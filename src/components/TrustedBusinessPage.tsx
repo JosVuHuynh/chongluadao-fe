@@ -30,6 +30,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 type ApiBusiness = {
   id: number;
   name: string;
+  logo_url?: string | null;
   tax_code?: string | null;
   email: string;
   phone?: string | null;
@@ -129,13 +130,7 @@ function normalizeLink(url?: string) {
   return `https://${u}`;
 }
 
-function SocialRow({
-  label,
-  url,
-}: {
-  label: string;
-  url?: string;
-}) {
+function SocialRow({ label, url }: { label: string; url?: string }) {
   if (!url) return null;
   const href = normalizeLink(url);
   if (!href) return null;
@@ -184,7 +179,7 @@ export function TrustedBusinessPage() {
       const mapped: UiBusiness[] = (json.data || []).map((b) => ({
         id: b.id,
         name: b.name,
-        logo: getLogoByCategory(b.category),
+        logo: b.logo_url || getLogoByCategory(b.category),
         category: b.category || "Khác",
 
         // rating/reviews DB chưa có -> default
@@ -319,160 +314,175 @@ export function TrustedBusinessPage() {
         </div>
 
         {/* Business Grid */}
-       {/* ✅ GRID: items-stretch để card cùng height */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-  {filteredBusinesses.map((business) => (
-    <Card
-      key={business.id}
-      className="border-0 shadow-md hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer h-full"
-      onClick={() => handleOpenDetail(business)}
-    >
-      {/* ✅ CardContent: flex-col h-full */}
-      <CardContent className="p-6 flex flex-col h-full">
-        {/* ✅ Nội dung chiếm hết chiều cao */}
-        <div className="space-y-4 flex-1">
-          {/* Header */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#A8E6CF] to-[#086644] flex items-center justify-center text-3xl">
-                {business.logo}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1 min-w-0">
-                  <h3 className="text-[#086644] line-clamp-1 min-w-0">
-                    {business.name}
-                  </h3>
-                  {business.verified && (
-                    <div className="flex-shrink-0" title="Đã xác thực">
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
+        {/* ✅ GRID: items-stretch để card cùng height */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+          {filteredBusinesses.map((business) => (
+            <Card
+              key={business.id}
+              className="border-0 shadow-md hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer h-full"
+              onClick={() => handleOpenDetail(business)}
+            >
+              {/* ✅ CardContent: flex-col h-full */}
+              <CardContent className="p-6 flex flex-col h-full">
+                {/* ✅ Nội dung chiếm hết chiều cao */}
+                <div className="space-y-4 flex-1">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#A8E6CF] to-[#086644] flex items-center justify-center overflow-hidden">
+                        {business.logo?.startsWith("http") ? (
+                          <img
+                            src={business.logo}
+                            alt={business.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-3xl">{business.logo}</span>
+                        )}
+                    </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1 min-w-0">
+                          <h3 className="text-[#086644] line-clamp-1 min-w-0">
+                            {business.name}
+                          </h3>
+                          {business.verified && (
+                            <div className="flex-shrink-0" title="Đã xác thực">
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 20 20"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  clipRule="evenodd"
+                                  d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                  fill="#1877F2"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {business.category}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {!!business.description && (
+                    <p className="text-sm text-[#6b7280] line-clamp-2">
+                      {business.description}
+                    </p>
+                  )}
+
+                  {/* Rating */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-[#F8B400] text-[#F8B400]" />
+                      <span className="text-sm text-[#086644]">
+                        {business.rating}
+                      </span>
+                    </div>
+                    <span className="text-xs text-[#6b7280]">
+                      ({business.reviews} đánh giá)
+                    </span>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="space-y-2 pt-2 border-t">
+                    {!!business.phone && (
+                      <div className="flex items-center gap-2 text-sm text-[#6b7280]">
+                        <Phone className="h-4 w-4" />
+                        <span className="break-words">{business.phone}</span>
+                      </div>
+                    )}
+                    {!!business.website && (
+                      <div className="flex items-center gap-2 text-sm text-[#6b7280]">
+                        <Globe className="h-4 w-4" />
+                        <span className="break-words">{business.website}</span>
+                      </div>
+                    )}
+                    {!!business.address && (
+                      <div className="flex items-center gap-2 text-sm text-[#6b7280]">
+                        <MapPin className="h-4 w-4" />
+                        <span className="break-words">{business.address}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Badges */}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Badge className="bg-[#A8E6CF] text-[#086644] hover:bg-[#A8E6CF]/80">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Đã xác thực
+                    </Badge>
+                    {business.insurance && (
+                      <Badge className="bg-[#086644] text-white hover:bg-[#086644]/80">
+                        🛡️ Có quỹ BH
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Products Scroll (optional) */}
+                  {business.products && business.products.length > 0 && (
+                    <div className="pt-2">
+                      <h4 className="text-sm text-[#086644] mb-2">
+                        Sản phẩm nổi bật
+                      </h4>
+                      <div
+                        className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide"
+                        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                       >
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          fill="#1877F2"
-                        />
-                      </svg>
+                        {business.products.map((product) => (
+                          <a
+                            key={product.id}
+                            href={product.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0 w-32 group cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="relative rounded-lg overflow-hidden mb-2 bg-gray-100">
+                              <ImageWithFallback
+                                src={product.image}
+                                alt={product.name}
+                                className="w-32 h-32 object-cover group-hover:scale-105 transition-transform duration-200"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200 flex items-center justify-center">
+                                <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            </div>
+                            <p className="text-xs text-[#333333] line-clamp-2 mb-1 group-hover:text-[#086644] transition-colors">
+                              {product.name}
+                            </p>
+                            <p className="text-xs text-[#086644]">
+                              {product.price}
+                            </p>
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  {business.category}
-                </Badge>
-              </div>
-            </div>
-          </div>
 
-          {/* Description */}
-          {!!business.description && (
-            <p className="text-sm text-[#6b7280] line-clamp-2">
-              {business.description}
-            </p>
-          )}
-
-          {/* Rating */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-[#F8B400] text-[#F8B400]" />
-              <span className="text-sm text-[#086644]">{business.rating}</span>
-            </div>
-            <span className="text-xs text-[#6b7280]">
-              ({business.reviews} đánh giá)
-            </span>
-          </div>
-
-          {/* Contact Info */}
-          <div className="space-y-2 pt-2 border-t">
-            {!!business.phone && (
-              <div className="flex items-center gap-2 text-sm text-[#6b7280]">
-                <Phone className="h-4 w-4" />
-                <span className="break-words">{business.phone}</span>
-              </div>
-            )}
-            {!!business.website && (
-              <div className="flex items-center gap-2 text-sm text-[#6b7280]">
-                <Globe className="h-4 w-4" />
-                <span className="break-words">{business.website}</span>
-              </div>
-            )}
-            {!!business.address && (
-              <div className="flex items-center gap-2 text-sm text-[#6b7280]">
-                <MapPin className="h-4 w-4" />
-                <span className="break-words">{business.address}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Badges */}
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Badge className="bg-[#A8E6CF] text-[#086644] hover:bg-[#A8E6CF]/80">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Đã xác thực
-            </Badge>
-            {business.insurance && (
-              <Badge className="bg-[#086644] text-white hover:bg-[#086644]/80">
-                🛡️ Có quỹ BH
-              </Badge>
-            )}
-          </div>
-
-          {/* Products Scroll (optional) */}
-          {business.products && business.products.length > 0 && (
-            <div className="pt-2">
-              <h4 className="text-sm text-[#086644] mb-2">Sản phẩm nổi bật</h4>
-              <div
-                className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-              >
-                {business.products.map((product) => (
-                  <a
-                    key={product.id}
-                    href={product.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-shrink-0 w-32 group cursor-pointer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="relative rounded-lg overflow-hidden mb-2 bg-gray-100">
-                      <ImageWithFallback
-                        src={product.image}
-                        alt={product.name}
-                        className="w-32 h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200 flex items-center justify-center">
-                        <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </div>
-                    <p className="text-xs text-[#333333] line-clamp-2 mb-1 group-hover:text-[#086644] transition-colors">
-                      {product.name}
-                    </p>
-                    <p className="text-xs text-[#086644]">{product.price}</p>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+                {/* ✅ NÚT LUÔN Ở ĐÁY -> THẲNG HÀNG */}
+                <Button
+                  className="mt-4 w-full rounded-xl bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white hover:opacity-90"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenDetail(business);
+                  }}
+                >
+                  Xem chi tiết
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* ✅ NÚT LUÔN Ở ĐÁY -> THẲNG HÀNG */}
-        <Button
-          className="mt-4 w-full rounded-xl bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white hover:opacity-90"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenDetail(business);
-          }}
-        >
-          Xem chi tiết
-        </Button>
-      </CardContent>
-    </Card>
-  ))}
-</div>
         {/* Empty State */}
         {filteredBusinesses.length === 0 && (
           <div className="text-center py-12">
@@ -485,232 +495,273 @@ export function TrustedBusinessPage() {
 
       {/* ✅ POPUP DETAIL (show all DB fields, hide empty) */}
       <Dialog open={openDetail} onOpenChange={setOpenDetail}>
-        <DialogContent className="w-[92vw] max-w-[760px] sm:max-w-[760px] p-0 overflow-hidden">
-          <div className="p-6 sm:p-7">
-            <DialogHeader className="mb-4">
-              <DialogTitle className="text-[#086644]">
-                Thông tin doanh nghiệp
-              </DialogTitle>
-            </DialogHeader>
+        {/* ✅ CHỈ SỬA RESPONSIVE UI CHO MOBILE */}
+        <DialogContent
+          className="
+            !w-[90vw] sm:!w-full !max-w-none sm:!max-w-[760px]
+            p-0 overflow-hidden
+            !max-h-[90vh] sm:!max-h-[85vh]
+            rounded-2xl
+          "
+        >
+          {/* ✅ wrapper scroll bên trong để không tràn màn hình */}
+          <div className="max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
+            <div className="p-4 sm:p-7">
+              <DialogHeader className="mb-4">
+                <DialogTitle className="text-[#086644]">
+                  Thông tin doanh nghiệp
+                </DialogTitle>
+              </DialogHeader>
 
-            {selected && (
-              <div className="space-y-4">
-                {/* Top */}
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#A8E6CF] to-[#086644] flex items-center justify-center text-2xl flex-shrink-0">
-                    {selected.logo}
+              {selected && (
+                <div className="space-y-4">
+                  {/* Top */}
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#A8E6CF] to-[#086644] flex items-center justify-center overflow-hidden">
+                    {selected.logo?.startsWith("http") ? (
+                      <img
+                        src={selected.logo}
+                        alt={selected.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl">{selected.logo}</span>
+                    )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="text-lg font-semibold text-[#086644] break-words min-w-0">
-                        {selected.name}
-                      </div>
-
-                      {selected.verified && (
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          title="Đã xác thực"
-                          className="flex-shrink-0"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            clipRule="evenodd"
-                            d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            fill="#1877F2"
-                          />
-                        </svg>
-                      )}
-                    </div>
-
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {!!selected.category && (
-                        <Badge variant="secondary" className="text-xs">
-                          {selected.category}
-                        </Badge>
-                      )}
-
-                      <Badge className="bg-[#A8E6CF] text-[#086644] hover:bg-[#A8E6CF]/80">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Đã xác thực
-                      </Badge>
-
-                      {selected.insurance && (
-                        <Badge className="bg-[#086644] text-white hover:bg-[#086644]/80">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Có quỹ BH
-                        </Badge>
-                      )}
-
-                      {selected.isTrusted && (
-                        <Badge className="bg-emerald-700 text-white">
-                          Uy tín
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Desc */}
-                {!!selected.description && (
-                  <p className="text-sm text-gray-600 break-words">
-                    {selected.description}
-                  </p>
-                )}
-
-                <Separator />
-
-                {/* Info rows */}
-                <div className="space-y-2 text-sm text-gray-700 min-w-0">
-                  {!!selected.taxCode && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                      <span className="break-words min-w-0">
-                        MST: {selected.taxCode}
-                      </span>
-                    </div>
-                  )}
-
-                  {!!selected.email && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Mail className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                      <span className="break-words min-w-0">{selected.email}</span>
-                    </div>
-                  )}
-
-                  {!!selected.phone && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Phone className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                      <span className="break-words min-w-0">{selected.phone}</span>
-                    </div>
-                  )}
-
-                  {!!selected.website && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Globe className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                      <a
-                        className="text-[#086644] hover:underline inline-flex items-center gap-1 break-all min-w-0"
-                        href={normalizeLink(selected.website)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <span className="break-all min-w-0">{selected.website}</span>
-                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                      </a>
-                    </div>
-                  )}
-
-                  {!!selected.address && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                      <span className="break-words min-w-0">{selected.address}</span>
-                    </div>
-                  )}
-
-                  {!!selected.verifiedAt && (
-                    <div className="text-xs text-gray-500">
-                      Ngày xác thực: {formatDateVi(selected.verifiedAt)}
-                    </div>
-                  )}
-                </div>
-
-                {/* ✅ CEO */}
-                {(!!selected.ceoName || !!selected.ceoAvatarUrl) && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <div className="text-sm font-semibold text-[#086644]">
-                        CEO
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        {selected.ceoAvatarUrl ? (
-                          <img
-                            src={normalizeLink(selected.ceoAvatarUrl)}
-                            alt={selected.ceoName || "CEO"}
-                            className="h-12 w-12 rounded-full object-cover border"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <div className="h-12 w-12 rounded-full bg-[#F4F6F8] flex items-center justify-center">
-                            <UserIcon className="h-5 w-5 text-gray-500" />
-                          </div>
-                        )}
-
-                        {!!selected.ceoName && (
-                          <div className="text-sm text-gray-700">
-                            <span className="font-medium">
-                              {selected.ceoName}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ✅ Social Links */}
-                {(!!selected.facebookUrl ||
-                  !!selected.messengerUrl ||
-                  !!selected.tiktokUrl ||
-                  !!selected.instagramUrl ||
-                  !!selected.zaloUrl ||
-                  !!selected.youtubeUrl) && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3">
-                      <div className="text-sm font-semibold text-[#086644]">
-                        Liên kết mạng xã hội
-                      </div>
-
-                      <div className="space-y-2 text-sm min-w-0">
-                        <SocialRow label="Facebook" url={selected.facebookUrl} />
-                        <div className="flex items-center gap-2 min-w-0">
-                          {/* Messenger row with icon */}
-                          {selected.messengerUrl ? (
-                            <>
-                              <MessageCircle className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                              <a
-                                className="text-[#086644] hover:underline inline-flex items-center gap-1 break-all min-w-0"
-                                href={normalizeLink(selected.messengerUrl)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <span className="min-w-0 break-all">Messenger</span>
-                                <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                              </a>
-                            </>
-                          ) : null}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="text-lg font-semibold text-[#086644] break-words min-w-0">
+                          {selected.name}
                         </div>
 
-                        <SocialRow label="TikTok" url={selected.tiktokUrl} />
-                        <SocialRow label="Instagram" url={selected.instagramUrl} />
-                        <SocialRow label="Zalo" url={selected.zaloUrl} />
-                        <SocialRow label="YouTube" url={selected.youtubeUrl} />
+                        {selected.verified && (
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            title="Đã xác thực"
+                            className="flex-shrink-0"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              clipRule="evenodd"
+                              d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              fill="#1877F2"
+                            />
+                          </svg>
+                        )}
+                      </div>
+
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {!!selected.category && (
+                          <Badge variant="secondary" className="text-xs">
+                            {selected.category}
+                          </Badge>
+                        )}
+
+                        <Badge className="bg-[#A8E6CF] text-[#086644] hover:bg-[#A8E6CF]/80">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Đã xác thực
+                        </Badge>
+
+                        {selected.insurance && (
+                          <Badge className="bg-[#086644] text-white hover:bg-[#086644]/80">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Có quỹ BH
+                          </Badge>
+                        )}
+
+                        {selected.isTrusted && (
+                          <Badge className="bg-emerald-700 text-white">
+                            Uy tín
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                  </>
-                )}
+                  </div>
 
-                <Separator />
+                  {/* Desc */}
+                  {!!selected.description && (
+                    <p className="text-sm text-gray-600 break-words">
+                      {selected.description}
+                    </p>
+                  )}
 
-                {/* Bottom actions */}
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setOpenDetail(false)}>
-                    Đóng
-                  </Button>
-                  <Button className="bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white hover:opacity-90">
-                    Liên hệ
-                  </Button>
+                  <Separator />
+
+                  {/* Info rows */}
+                  <div className="space-y-2 text-sm text-gray-700 min-w-0">
+                    {!!selected.taxCode && (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span className="break-words min-w-0">
+                          MST: {selected.taxCode}
+                        </span>
+                      </div>
+                    )}
+
+                    {!!selected.email && (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Mail className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span className="break-words min-w-0">
+                          {selected.email}
+                        </span>
+                      </div>
+                    )}
+
+                    {!!selected.phone && (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Phone className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span className="break-words min-w-0">
+                          {selected.phone}
+                        </span>
+                      </div>
+                    )}
+
+                    {!!selected.website && (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Globe className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <a
+                          className="text-[#086644] hover:underline inline-flex items-center gap-1 break-all min-w-0"
+                          href={normalizeLink(selected.website)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <span className="break-all min-w-0">
+                            {selected.website}
+                          </span>
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        </a>
+                      </div>
+                    )}
+
+                    {!!selected.address && (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span className="break-words min-w-0">
+                          {selected.address}
+                        </span>
+                      </div>
+                    )}
+
+                    {!!selected.verifiedAt && (
+                      <div className="text-xs text-gray-500">
+                        Ngày xác thực: {formatDateVi(selected.verifiedAt)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ✅ CEO */}
+                  {(!!selected.ceoName || !!selected.ceoAvatarUrl) && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-[#086644]">
+                          CEO
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {selected.ceoAvatarUrl ? (
+                            <img
+                              src={normalizeLink(selected.ceoAvatarUrl)}
+                              alt={selected.ceoName || "CEO"}
+                              className="h-12 w-12 rounded-full object-cover border"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-full bg-[#F4F6F8] flex items-center justify-center">
+                              <UserIcon className="h-5 w-5 text-gray-500" />
+                            </div>
+                          )}
+
+                          {!!selected.ceoName && (
+                            <div className="text-sm text-gray-700">
+                              <span className="font-medium">
+                                {selected.ceoName}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ✅ Social Links */}
+                  {(!!selected.facebookUrl ||
+                    !!selected.messengerUrl ||
+                    !!selected.tiktokUrl ||
+                    !!selected.instagramUrl ||
+                    !!selected.zaloUrl ||
+                    !!selected.youtubeUrl) && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-[#086644]">
+                          Liên kết mạng xã hội
+                        </div>
+
+                        <div className="space-y-2 text-sm min-w-0">
+                          <SocialRow
+                            label="Facebook"
+                            url={selected.facebookUrl}
+                          />
+                          <div className="flex items-center gap-2 min-w-0">
+                            {/* Messenger row with icon */}
+                            {selected.messengerUrl ? (
+                              <>
+                                <MessageCircle className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                <a
+                                  className="text-[#086644] hover:underline inline-flex items-center gap-1 break-all min-w-0"
+                                  href={normalizeLink(selected.messengerUrl)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <span className="min-w-0 break-all">
+                                    Messenger
+                                  </span>
+                                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                                </a>
+                              </>
+                            ) : null}
+                          </div>
+
+                          <SocialRow label="TikTok" url={selected.tiktokUrl} />
+                          <SocialRow
+                            label="Instagram"
+                            url={selected.instagramUrl}
+                          />
+                          <SocialRow label="Zalo" url={selected.zaloUrl} />
+                          <SocialRow
+                            label="YouTube"
+                            url={selected.youtubeUrl}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <Separator />
+
+                  {/* Bottom actions */}
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => setOpenDetail(false)}
+                    >
+                      Đóng
+                    </Button>
+                    <Button className="bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white hover:opacity-90">
+                      Liên hệ
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -110,14 +110,13 @@ const getS3PresignUrl = async (
   fileName: string,
   contentType: string
 ): Promise<S3PresignResponse> => {
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/uploads/presign`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName, contentType }),
-    }
-  );
+  const response = await fetch(`${API_BASE_URL}/uploads/presign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // nếu BE dùng cookie cho logic nào đó thì giữ include, còn không thì bỏ
+    credentials: "include",
+    body: JSON.stringify({ fileName, contentType }),
+  });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -167,14 +166,13 @@ export const createReport = async (
 ): Promise<any> => {
   const payload = toReportPayloadBE(reportData);
 
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/reports`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
+  const response = await fetch(`${API_BASE_URL}/reports`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -185,14 +183,11 @@ export const createReport = async (
       );
     }
 
-    if (response.status === 401) {
-      throw new Error("Bạn cần đăng nhập để gửi tố cáo");
-    }
-
     if (response.status === 429) {
       throw new Error("Bạn đã gửi quá nhiều tố cáo. Vui lòng thử lại sau.");
     }
 
+    // Không cần xử lý 401 nữa vì đây là API public
     throw new Error(
       errorData.message || "Không thể gửi tố cáo"
     );
@@ -200,7 +195,6 @@ export const createReport = async (
 
   return response.json();
 };
-
 /* ================================
    STATS
 ================================ */

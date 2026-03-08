@@ -1,14 +1,29 @@
+import { uploadImageToS3 } from "./reportService";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export interface BusinessRegistration {
-  name: string;
+   name: string;
   taxCode: string;
   email: string;
   phone: string;
   address: string;
   website?: string;
   description?: string;
-  plan: 'BASIC' | 'PREMIUM' | 'VIP';
+  logoUrl?: string;
+  category?: string;
+
+  facebookUrl?: string;
+  messengerUrl?: string;
+  tiktokUrl?: string;
+  instagramUrl?: string;
+  zaloUrl?: string;
+  youtubeUrl?: string;
+
+  ceoName?: string;
+  ceoAvatarUrl?: string;
+
+  plan?: "BASIC" | "PREMIUM" | "VIP";
   requestVerifiedBadge?: boolean;
 }
 
@@ -46,4 +61,15 @@ export const registerBusiness = async (data: BusinessRegistration): Promise<Busi
   }
 
   return response.json();
+};
+
+
+export const uploadImage = async (
+  file: File,
+  onProgress?: (current: number, total: number) => void
+): Promise<string> => {
+  const urls: string[] = [];
+    const url = await uploadImageToS3(file);
+    urls.push(url);
+  return urls[0];
 };

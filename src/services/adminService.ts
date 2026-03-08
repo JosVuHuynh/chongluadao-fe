@@ -10,18 +10,24 @@ const getAuthToken = (): string | null => {
 // Helper function to make authenticated requests
 const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
   const token = getAuthToken();
-  
+
   if (!token) {
-    throw new Error('Vui lòng đăng nhập để tiếp tục');
+    const error: any = new Error("Vui lòng đăng nhập để tiếp tục");
+    error.response = {
+      data: {
+        message: "Vui lòng đăng nhập để tiếp tục",
+      },
+    };
+    throw error;
   }
-  
+
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(options.headers || {}),
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const response = await fetch(url, {
@@ -29,22 +35,39 @@ const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
     headers,
   });
 
+  const responseData = await response.json().catch(() => ({}));
+
   if (!response.ok) {
-    // Handle unauthorized access
     if (response.status === 401) {
-      // Clear auth data and redirect to login
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
-      throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại');
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+
+      const error: any = new Error(
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại"
+      );
+      error.response = {
+        status: 401,
+        data: {
+          message: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại",
+        },
+      };
+      throw error;
     }
-    
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+
+    const error: any = new Error(
+      responseData.message || `HTTP error! status: ${response.status}`
+    );
+
+    error.response = {
+      status: response.status,
+      data: responseData,
+    };
+
+    throw error;
   }
 
-  return response.json();
+  return responseData;
 };
-
 // ===== USER MANAGEMENT =====
 export interface User {
   id: number;
@@ -210,17 +233,47 @@ export const deleteReport = async (id: number): Promise<void> => {
 export interface Business {
   id: number;
   name: string;
+  logoUrl?: string | null;
   taxCode: string;
   phone: string;
   email: string;
-  website?: string;
+  website?: string | null;
   address: string;
-  description: string;
+  description?: string | null;
+  category?: string | null;
+
   plan: 'BASIC' | 'PREMIUM' | 'VIP';
   status: 'PENDING' | 'VERIFIED' | 'REJECTED';
   verifiedBadge: boolean;
+
+  isTrusted: boolean;
+  hasInsurance: boolean;
+
+  facebookUrl?: string | null;
+  messengerUrl?: string | null;
+  tiktokUrl?: string | null;
+  instagramUrl?: string | null;
+  zaloUrl?: string | null;
+  youtubeUrl?: string | null;
+
+  ceoName?: string | null;
+  ceoAvatarUrl?: string | null;
+
+  rejectReason?: string | null;
+  verifiedAt?: string | null;
+
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BusinessListResponse {
+  data: Business[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
 }
 
 export const getBusinesses = async (params: {
@@ -228,27 +281,54 @@ export const getBusinesses = async (params: {
   limit?: number;
   q?: string;
   status?: 'PENDING' | 'VERIFIED' | 'REJECTED';
-}): Promise<PaginatedResponse<Business>> => {
+  category?: string;
+  isTrusted?: boolean;
+  hasInsurance?: boolean;
+}): Promise<BusinessListResponse> => {
   const queryParams = new URLSearchParams();
+
   if (params.page) queryParams.append('page', params.page.toString());
   if (params.limit) queryParams.append('limit', params.limit.toString());
   if (params.q) queryParams.append('q', params.q);
   if (params.status) queryParams.append('status', params.status);
+  if (params.category) queryParams.append('category', params.category);
+  if (params.isTrusted !== undefined) {
+    queryParams.append('isTrusted', params.isTrusted ? '1' : '0');
+  }
+  if (params.hasInsurance !== undefined) {
+    queryParams.append('hasInsurance', params.hasInsurance ? '1' : '0');
+  }
 
   return authenticatedFetch(`${API_BASE_URL}/businesses?${queryParams.toString()}`);
 };
 
 export const createBusiness = async (data: {
   name: string;
+  logoUrl?: string | null;
   taxCode: string;
   phone: string;
   email: string;
-  website?: string;
+  website?: string | null;
   address: string;
-  description: string;
+  description?: string | null;
+  category?: string | null;
+
   plan: 'BASIC' | 'PREMIUM' | 'VIP';
   status?: 'PENDING' | 'VERIFIED' | 'REJECTED';
   verifiedBadge?: boolean;
+
+  isTrusted?: boolean;
+  hasInsurance?: boolean;
+
+  facebookUrl?: string | null;
+  messengerUrl?: string | null;
+  tiktokUrl?: string | null;
+  instagramUrl?: string | null;
+  zaloUrl?: string | null;
+  youtubeUrl?: string | null;
+
+  ceoName?: string | null;
+  ceoAvatarUrl?: string | null;
 }): Promise<Business> => {
   return authenticatedFetch(`${API_BASE_URL}/businesses`, {
     method: 'POST',
@@ -258,15 +338,32 @@ export const createBusiness = async (data: {
 
 export const updateBusiness = async (id: number, data: {
   name?: string;
+  logoUrl?: string | null;
   taxCode?: string;
   phone?: string;
   email?: string;
-  website?: string;
+  website?: string | null;
   address?: string;
-  description?: string;
+  description?: string | null;
+  category?: string | null;
+
   plan?: 'BASIC' | 'PREMIUM' | 'VIP';
   status?: 'PENDING' | 'VERIFIED' | 'REJECTED';
   verifiedBadge?: boolean;
+  rejectReason?: string | null;
+
+  isTrusted?: boolean;
+  hasInsurance?: boolean;
+
+  facebookUrl?: string | null;
+  messengerUrl?: string | null;
+  tiktokUrl?: string | null;
+  instagramUrl?: string | null;
+  zaloUrl?: string | null;
+  youtubeUrl?: string | null;
+
+  ceoName?: string | null;
+  ceoAvatarUrl?: string | null;
 }): Promise<Business> => {
   return authenticatedFetch(`${API_BASE_URL}/businesses/${id}`, {
     method: 'PATCH',

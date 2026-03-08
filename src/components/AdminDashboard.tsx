@@ -43,6 +43,7 @@ import logoImage from 'figma:asset/2e2b9f150b66714e8750e5a4fcd8bac815716ee5.png'
 import { AdminUsersTab } from './AdminUsersTab';
 import { AdminReportsTab } from './AdminReportsTab';
 import { AdminBusinessesTab } from './AdminBusinessesTab';
+import { Toaster } from 'sonner';
 
 interface AdminDashboardProps {
   onNavigate?: (page: string) => void;
@@ -1880,6 +1881,8 @@ export function AdminDashboard({ onNavigate, onLogout }: AdminDashboardProps) {
           </div>
         </DialogContent>
       </Dialog>
+      <Toaster position="top-right" richColors />
+
     </div>
   );
 }

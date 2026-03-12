@@ -77,6 +77,7 @@ export interface User {
   role: string;
   isActive: boolean;
   createdAt: string;
+  businessId?: string | number | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -113,6 +114,8 @@ export const createUser = async (data: {
   password: string;
   phone?: string;
   role: string;
+  businessId?: string | number | null;
+
 }): Promise<User> => {
   return authenticatedFetch(`${API_BASE_URL}/users`, {
     method: 'POST',
@@ -126,6 +129,8 @@ export const updateUser = async (id: number, data: {
   phone?: string;
   role?: string;
   isActive?: boolean;
+  businessId?: string | number | null;
+
 }): Promise<User> => {
   return authenticatedFetch(`${API_BASE_URL}/users/${id}`, {
     method: 'PATCH',

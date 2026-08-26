@@ -51,8 +51,8 @@ export function Header({ currentPage, onNavigate, user, onLogout }: HeaderProps)
             <span className="text-2xl font-medium text-[#086644] hidden sm:block">ChongLuaDaoJP</span>
           </button>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          {/* Desktop Navigation — shows from lg only, so iPad (md–lg) falls back to the single hamburger button like mobile; no font-size changed here */}
+          <nav className="hidden lg:flex items-center gap-6">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -121,10 +121,10 @@ export function Header({ currentPage, onNavigate, user, onLogout }: HeaderProps)
               </>
             )}
 
-            {/* Mobile Menu Button */}
+            {/* Menu Button — now covers phones + iPad (hidden only from lg up) */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2"
+              className="lg:hidden p-2"
             >
               {mobileMenuOpen ? (
                 <X className="h-6 w-6 text-[#333333]" />
@@ -135,9 +135,9 @@ export function Header({ currentPage, onNavigate, user, onLogout }: HeaderProps)
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Menu panel — same dropdown as mobile, now also used for iPad */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t">
+          <div className="lg:hidden py-4 border-t">
             <nav className="flex flex-col gap-3">
               {navItems.map((item) => (
                 <button
@@ -179,13 +179,14 @@ export function Header({ currentPage, onNavigate, user, onLogout }: HeaderProps)
                   </button>
                 </>
               ) : (
+                /* Already shown in the header bar itself from md (768px) up — only needed here below that. (Would ideally be sm/640px to match exactly when the header bar's own buttons appear, but this static build's CSS has no .sm\:hidden rule generated — see docs/CONVENTIONS.md.) */
                 <>
                   <button
                     onClick={() => {
                       onNavigate('login');
                       setMobileMenuOpen(false);
                     }}
-                    className="text-base font-medium text-left px-4 py-2 rounded-lg text-[#333333] hover:bg-[#F4F6F8]"
+                    className="md:hidden text-base font-medium text-left px-4 py-2 rounded-lg text-[#333333] hover:bg-[#F4F6F8]"
                   >
                     Đăng nhập
                   </button>
@@ -194,7 +195,7 @@ export function Header({ currentPage, onNavigate, user, onLogout }: HeaderProps)
                       onNavigate('register');
                       setMobileMenuOpen(false);
                     }}
-                    className="text-base font-medium text-left px-4 py-2 rounded-lg bg-[#A8E6CF] text-[#086644]"
+                    className="md:hidden text-base font-medium text-left px-4 py-2 rounded-lg bg-[#A8E6CF] text-[#086644]"
                   >
                     Đăng ký
                   </button>

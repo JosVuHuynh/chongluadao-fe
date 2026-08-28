@@ -430,7 +430,7 @@ export function AdminBusinessesTab() {
       <Label htmlFor={id}>{label}</Label>
 
       {preview && (
-        <div className="w-24 h-24 rounded-xl overflow-hidden border bg-[#F9FAFB]">
+        <div className="w-20 h-20 rounded-xl overflow-hidden border bg-[#F9FAFB]">
           <img src={preview} alt={label} className="w-full h-full object-cover" />
         </div>
       )}
@@ -660,7 +660,7 @@ export function AdminBusinessesTab() {
           </DialogHeader>
 
           {selectedBusiness && (
-            <form onSubmit={handleUpdateBusiness} className="space-y-6" noValidate>
+            <form onSubmit={handleUpdateBusiness} className="space-y-6">
               <div className="space-y-4">
                 <h3 className="font-medium text-[#1F2937]">Thông tin cơ bản</h3>
 
@@ -1006,7 +1006,7 @@ export function AdminBusinessesTab() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-phone">Số điện thoại *</Label>
-                  <Input id="new-phone" name="phone" required className="rounded-xl" />
+                  <Input id="new-phone" name="phone" type="tel" required className="rounded-xl" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-email">Email *</Label>

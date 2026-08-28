@@ -1,4 +1,5 @@
 import { uploadImageToS3 } from "./reportService";
+import { authenticatedFetch } from "./authService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -63,6 +64,33 @@ export const registerBusiness = async (data: BusinessRegistration): Promise<Busi
   return response.json();
 };
 
+
+export interface MyBusiness {
+  id: number;
+  name: string;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  logo_url: string | null;
+  tax_code: string;
+  email: string;
+  phone: string;
+  address: string;
+  website: string | null;
+  category: string | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Business self-service: hồ sơ doanh nghiệp của tài khoản đang đăng nhập (role BUSINESS)
+ */
+export const getMyBusiness = async (): Promise<MyBusiness | null> => {
+  const response = await authenticatedFetch(`${API_BASE_URL}/business/mine`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Không thể tải hồ sơ doanh nghiệp');
+  }
+  const result = await response.json();
+  return result.data;
+};
 
 export const uploadImage = async (
   file: File,

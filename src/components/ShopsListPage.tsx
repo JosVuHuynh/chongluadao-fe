@@ -1,10 +1,13 @@
-import { Store, CheckCircle, Star, Package, TrendingUp, Search } from 'lucide-react';
+import { Store, CheckCircle, Package, Search, Loader2 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import * as shopService from '../services/shopService';
+import type { Shop } from '../services/shopService';
+import { toast } from 'sonner@2.0.3';
 
 interface ShopsListPageProps {
   onNavigate: (page: string, shopId?: number) => void;
@@ -12,127 +15,33 @@ interface ShopsListPageProps {
 
 export function ShopsListPage({ onNavigate }: ShopsListPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
 
-  const shops = [
-    {
-      id: 1,
-      name: 'TechStore Premium',
-      category: 'Điện tử - Công nghệ',
-      description: 'Chuyên cung cấp các sản phẩm điện tử, laptop, điện thoại cao cấp chính hãng',
-      logo: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800',
-      verified: true,
-      rating: 4.8,
-      totalReviews: 1234,
-      totalProducts: 156,
-      totalSales: 3420,
-      joinedDate: '2022-01-15',
-      followers: 5670,
-      responseRate: 98,
-      responseTime: '< 1 giờ',
-    },
-    {
-      id: 2,
-      name: 'Fashion House VN',
-      category: 'Thời trang',
-      description: 'Thời trang nam nữ cao cấp, hàng hiệu chính hãng nhập khẩu từ Nhật Bản',
-      logo: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
-      verified: true,
-      rating: 4.9,
-      totalReviews: 2156,
-      totalProducts: 342,
-      totalSales: 8920,
-      joinedDate: '2021-06-20',
-      followers: 12340,
-      responseRate: 99,
-      responseTime: '< 30 phút',
-    },
-    {
-      id: 3,
-      name: 'Home & Living Store',
-      category: 'Nội thất - Gia dụng',
-      description: 'Nội thất cao cấp, đồ gia dụng thông minh cho ngôi nhà hiện đại',
-      logo: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800',
-      verified: true,
-      rating: 4.7,
-      totalReviews: 892,
-      totalProducts: 234,
-      totalSales: 2130,
-      joinedDate: '2022-03-10',
-      followers: 4520,
-      responseRate: 96,
-      responseTime: '< 2 giờ',
-    },
-    {
-      id: 4,
-      name: 'Beauty & Care JP',
-      category: 'Làm đẹp - Sức khỏe',
-      description: 'Mỹ phẩm Nhật Bản chính hãng, sản phẩm chăm sóc sức khỏe cao cấp',
-      logo: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800',
-      verified: true,
-      rating: 4.9,
-      totalReviews: 3421,
-      totalProducts: 567,
-      totalSales: 12340,
-      joinedDate: '2021-02-01',
-      followers: 18760,
-      responseRate: 99,
-      responseTime: '< 30 phút',
-    },
-    {
-      id: 5,
-      name: 'Sports & Outdoor',
-      category: 'Thể thao - Dụng cụ',
-      description: 'Trang thiết bị thể thao chuyên nghiệp, dụng cụ outdoor chất lượng cao',
-      logo: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
-      verified: true,
-      rating: 4.6,
-      totalReviews: 674,
-      totalProducts: 189,
-      totalSales: 1560,
-      joinedDate: '2022-08-15',
-      followers: 3210,
-      responseRate: 95,
-      responseTime: '< 3 giờ',
-    },
-    {
-      id: 6,
-      name: 'Gourmet Food Shop',
-      category: 'Thực phẩm - Đồ uống',
-      description: 'Thực phẩm cao cấp nhập khẩu, đồ uống đặc sản từ Nhật Bản',
-      logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200',
-      coverImage: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800',
-      verified: true,
-      rating: 4.8,
-      totalReviews: 1567,
-      totalProducts: 423,
-      totalSales: 4230,
-      joinedDate: '2021-11-05',
-      followers: 8920,
-      responseRate: 97,
-      responseTime: '< 1 giờ',
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const timeout = setTimeout(() => {
+      shopService
+        .getShops({ q: searchQuery || undefined, category: categoryFilter || undefined, limit: 24 })
+        .then((result) => {
+          if (cancelled) return;
+          setShops(result.data);
+          setTotalItems(result.pagination.totalItems);
+        })
+        .catch((error) => toast.error(error instanceof Error ? error.message : 'Không thể tải danh sách cửa hàng'))
+        .finally(() => !cancelled && setLoading(false));
+    }, 300);
 
-  const filteredShops = shops.filter(shop => 
-    shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    shop.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    shop.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [searchQuery, categoryFilter]);
 
-  const categories = [
-    { name: 'Tất cả', count: shops.length },
-    { name: 'Điện tử - Công nghệ', count: 1 },
-    { name: 'Thời trang', count: 1 },
-    { name: 'Nội thất - Gia dụng', count: 1 },
-    { name: 'Làm đẹp - Sức khỏe', count: 1 },
-    { name: 'Thể thao - Dụng cụ', count: 1 },
-    { name: 'Thực phẩm - Đồ uống', count: 1 },
-  ];
+  const categories = Array.from(new Set(shops.map((s) => s.category).filter(Boolean))) as string[];
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] py-12">
@@ -144,7 +53,7 @@ export function ShopsListPage({ onNavigate }: ShopsListPageProps) {
           </div>
           <h1 className="text-[#086644]">Cửa hàng doanh nghiệp</h1>
           <p className="text-[#6b7280] max-w-2xl mx-auto">
-            Khám phá các cửa hàng uy tín đã được xác thực bởi ChongLuaDaoJP
+            Khám phá các cửa hàng của doanh nghiệp đã được ChongLuaDaoJP xác thực
           </p>
         </div>
 
@@ -162,174 +71,128 @@ export function ShopsListPage({ onNavigate }: ShopsListPageProps) {
           </div>
         </div>
 
-        {/* Category Filter */}
-        <div className="mb-8 overflow-x-auto">
-          <div className="flex gap-3 pb-2">
-            {categories.map((category, index) => (
+        {/* Toolbar: category filters + compact stats, sharing one row and one alignment with the grid below */}
+        <div className="mb-6 flex flex-col gap-4 border-b pb-6 sm:flex-row items-center justify-between">
+          <div className="overflow-x-auto">
+            <div className="flex gap-2">
               <Button
-                key={index}
-                variant={index === 0 ? "default" : "outline"}
+                variant={categoryFilter === null ? 'default' : 'outline'}
                 size="sm"
-                className={index === 0 
-                  ? "bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white rounded-full whitespace-nowrap" 
-                  : "rounded-full whitespace-nowrap"
-                }
+                className={categoryFilter === null ? 'bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white rounded-full whitespace-nowrap' : 'rounded-full whitespace-nowrap'}
+                onClick={() => setCategoryFilter(null)}
               >
-                {category.name} ({category.count})
+                Tất cả
               </Button>
-            ))}
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  variant={categoryFilter === category ? 'default' : 'outline'}
+                  size="sm"
+                  className={categoryFilter === category ? 'bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white rounded-full whitespace-nowrap' : 'rounded-full whitespace-nowrap'}
+                  onClick={() => setCategoryFilter(category)}
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-shrink-0 items-center gap-4 text-sm text-[#6b7280]">
+            <span className="flex items-center gap-1.5">
+              <Store className="h-4 w-4 text-[#086644]" />
+              <span className="text-[#086644] font-medium">{totalItems}</span> cửa hàng
+            </span>
+            <span className="h-4 border-l border-[#E0E0E0]" style={{ width: 0 }} />
+            <span className="flex items-center gap-1.5">
+              <Package className="h-4 w-4 text-[#086644]" />
+              <span className="text-[#086644] font-medium">{shops.reduce((sum, s) => sum + s.productCount, 0)}</span> sản phẩm
+            </span>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Cửa hàng', value: `${shops.length}+`, icon: Store },
-            { label: 'Sản phẩm', value: '2K+', icon: Package },
-            { label: 'Đã bán', value: '30K+', icon: TrendingUp },
-            { label: 'Đánh giá', value: '4.8⭐', icon: Star },
-          ].map((stat, index) => (
-            <Card key={index} className="border-0 shadow-sm">
-              <CardContent className="p-4 text-center space-y-2">
-                <stat.icon className="h-6 w-6 mx-auto text-[#086644]" />
-                <div className="text-2xl text-[#086644]">{stat.value}</div>
-                <div className="text-sm text-[#6b7280]">{stat.label}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {loading && (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-[#086644]" />
+          </div>
+        )}
 
         {/* Shops Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredShops.map((shop) => (
-            <Card 
-              key={shop.id} 
-              className="border-0 shadow-md hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden group cursor-pointer"
-              onClick={() => onNavigate('shop-detail', shop.id)}
-            >
-              <CardContent className="p-0">
-                {/* Cover Image */}
-                <div className="relative h-32 overflow-hidden">
-                  <ImageWithFallback
-                    src={shop.coverImage}
-                    alt={shop.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                  {shop.verified && (
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {shops.map((shop) => (
+              <Card
+                key={shop.id}
+                className="border-0 shadow-md hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden group cursor-pointer"
+                onClick={() => onNavigate('shop-detail', shop.id)}
+              >
+                <CardContent className="p-0">
+                  {/* Cover Image */}
+                  <div className="relative h-32 overflow-hidden bg-gradient-to-br from-[#A8E6CF] to-[#086644]">
+                    {shop.coverUrl && (
+                      <ImageWithFallback src={shop.coverUrl} alt={shop.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     <Badge className="absolute top-3 right-3 bg-[#086644] text-white">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Xác thực
                     </Badge>
-                  )}
-                </div>
+                  </div>
 
-                {/* Shop Info */}
-                <div className="p-5 space-y-4">
-                  {/* Logo & Name */}
-                  <div className="flex items-start gap-3">
-                    <div className="relative -mt-10 flex-shrink-0">
-                      <div className="h-16 w-16 rounded-full border-4 border-white overflow-hidden bg-white shadow-lg">
-                        <ImageWithFallback
-                          src={shop.logo}
-                          alt={shop.name}
-                          className="w-full h-full object-cover"
-                        />
+                  {/* Shop Info */}
+                  <div className="p-5 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="relative -mt-10 flex-shrink-0">
+                        <div className="h-16 w-16 rounded-full border-4 border-white overflow-hidden bg-white shadow-lg flex items-center justify-center">
+                          {shop.logoUrl ? (
+                            <ImageWithFallback src={shop.logoUrl} alt={shop.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Store className="h-6 w-6 text-[#086644]" />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 pt-2">
-                      <div className="flex items-start gap-2">
-                        <h3 className="text-[#086644] line-clamp-1 flex-1">{shop.name}</h3>
-                        {shop.verified && (
-                          <CheckCircle className="h-5 w-5 text-[#086644] flex-shrink-0 fill-[#086644]" />
+                      <div className="flex-1 pt-2">
+                        <h3 className="text-[#086644] line-clamp-1">{shop.name}</h3>
+                        {shop.category && (
+                          <Badge variant="secondary" className="mt-1">
+                            {shop.category}
+                          </Badge>
                         )}
                       </div>
-                      <Badge variant="secondary" className="mt-1">
-                        {shop.category}
-                      </Badge>
                     </div>
-                  </div>
 
-                  {/* Description */}
-                  <p className="text-sm text-[#6b7280] line-clamp-2 min-h-[40px]">
-                    {shop.description}
-                  </p>
+                    {shop.shortDescription && (
+                      <p className="text-sm text-[#6b7280] line-clamp-2 min-h-[40px]">{shop.shortDescription}</p>
+                    )}
 
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2 pt-3 border-t">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 text-[#F8B400]">
-                        <Star className="h-4 w-4 fill-current" />
-                        <span className="text-sm text-[#086644]">{shop.rating}</span>
-                      </div>
-                      <div className="text-xs text-[#6b7280] mt-1">{shop.totalReviews} đánh giá</div>
-                    </div>
-                    <div className="text-center border-l">
-                      <div className="text-sm text-[#086644]">{shop.totalProducts}</div>
+                    <div className="pt-3 border-t text-center">
+                      <div className="text-sm text-[#086644]">{shop.productCount}</div>
                       <div className="text-xs text-[#6b7280] mt-1">Sản phẩm</div>
                     </div>
-                    <div className="text-center border-l">
-                      <div className="text-sm text-[#086644]">{shop.followers.toLocaleString('vi-VN')}</div>
-                      <div className="text-xs text-[#6b7280] mt-1">Theo dõi</div>
-                    </div>
+
+                    <Button
+                      className="w-full bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white hover:opacity-90 rounded-xl"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigate('shop-detail', shop.id);
+                      }}
+                    >
+                      Xem cửa hàng
+                    </Button>
                   </div>
-
-                  {/* Response Info */}
-                  <div className="flex items-center justify-between text-xs pt-3 border-t">
-                    <div className="flex items-center gap-1 text-[#6b7280]">
-                      <div className="h-2 w-2 rounded-full bg-[#A8E6CF]" />
-                      <span>Phản hồi: {shop.responseRate}%</span>
-                    </div>
-                    <span className="text-[#6b7280]">Trong {shop.responseTime}</span>
-                  </div>
-
-                  {/* Action Button */}
-                  <Button 
-                    className="w-full bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white hover:opacity-90 rounded-xl"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNavigate('shop-detail', shop.id);
-                    }}
-                  >
-                    Xem cửa hàng
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* No Results */}
-        {filteredShops.length === 0 && (
-          <div className="text-center py-16">
-            <Store className="h-16 w-16 mx-auto text-[#6b7280] mb-4" />
-            <h3 className="text-[#333333] mb-2">Không tìm thấy cửa hàng</h3>
-            <p className="text-[#6b7280]">Thử tìm kiếm với từ khóa khác</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
 
-        {/* Trust Banner */}
-        <Card className="mt-12 border-0 bg-gradient-to-r from-[#A8E6CF] to-[#086644] text-white">
-          <CardContent className="p-8 text-center space-y-4">
-            <h3>Tất cả cửa hàng đều được xác thực</h3>
-            <p className="text-white/90 max-w-2xl mx-auto">
-              Chúng tôi đảm bảo mọi cửa hàng trên nền tảng đều được kiểm tra kỹ lưỡng 
-              về giấy phép kinh doanh, uy tín và chất lượng dịch vụ
-            </p>
-            <div className="flex flex-wrap justify-center gap-8 pt-4">
-              {[
-                { icon: CheckCircle, label: '100% xác thực' },
-                { icon: Star, label: 'Đánh giá cao' },
-                { icon: TrendingUp, label: 'Giao dịch minh bạch' },
-              ].map((item, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* No Results */}
+        {!loading && shops.length === 0 && (
+          <div className="text-center py-16">
+            <Store className="h-16 w-16 mx-auto text-[#6b7280] mb-4" />
+            <h3 className="text-[#333333] mb-2">Chưa có cửa hàng nào</h3>
+            <p className="text-[#6b7280]">Thử tìm kiếm với từ khóa khác</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, AlertTriangle, Building2, Users, DollarSign, TrendingUp, Loader2 } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, Building2, Users, Clock3, TrendingUp, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import * as adminService from '../services/adminService';
@@ -28,7 +28,7 @@ export function AdminOverviewTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center h-64">
         <Loader2 className="h-12 w-12 animate-spin text-[#086644]" />
       </div>
     );
@@ -56,12 +56,12 @@ export function AdminOverviewTab() {
       color: 'bg-[#DBEAFE]',
       iconColor: 'text-[#3B82F6]',
     },
-    { 
-      label: 'Doanh thu', 
-      value: `${(stats?.totalRevenue || 0).toLocaleString()}đ`, 
-      icon: DollarSign, 
-      color: 'bg-[#E0E7FF]',
-      iconColor: 'text-[#6366F1]',
+    {
+      label: 'Chờ duyệt (shop + sản phẩm)',
+      value: String((stats?.pendingShops || 0) + (stats?.pendingProducts || 0)),
+      icon: Clock3,
+      color: 'bg-[#FEF3C7]',
+      iconColor: 'text-[#F59E0B]',
     },
   ];
 
@@ -160,8 +160,8 @@ export function AdminOverviewTab() {
               <p className="text-3xl text-[#1F2937]">{stats?.totalShops || 0}</p>
             </div>
             <div className="text-center p-6 bg-[#F9FAFB] rounded-xl">
-              <p className="text-sm text-[#6B7280] mb-2">Doanh thu</p>
-              <p className="text-3xl text-[#1F2937]">{(stats?.totalRevenue || 0).toLocaleString()}đ</p>
+              <p className="text-sm text-[#6B7280] mb-2">Sản phẩm chờ duyệt</p>
+              <p className="text-3xl text-[#1F2937]">{stats?.pendingProducts || 0}</p>
             </div>
           </div>
         </CardContent>

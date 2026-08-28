@@ -18,7 +18,9 @@ import {
   ShoppingBag,
   X,
   ExternalLink,
-  Pencil
+  Pencil,
+  Loader2,
+  Upload
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -28,11 +30,14 @@ import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { Switch } from './ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ScrollArea } from './ui/scroll-area';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import * as newsService from '../services/newsService';
+import * as shopService from '../services/shopService';
+import * as businessService from '../services/businessService';
+import { toast } from 'sonner@2.0.3';
 
 interface BusinessPortalProps {
   onNavigate?: (page: string) => void;
@@ -49,64 +54,243 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<any>(null);
-  
+  const [selectedPost, setSelectedPost] = useState<newsService.NewsPost | null>(null);
+
   // Product dialog states
   const [addProductDialogOpen, setAddProductDialogOpen] = useState(false);
   const [editProductDialogOpen, setEditProductDialogOpen] = useState(false);
   const [deleteProductDialogOpen, setDeleteProductDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  
-  // Form states
-  const [hasProduct, setHasProduct] = useState(false);
-  const [postProducts, setPostProducts] = useState<any[]>([]);
+
+  // Business profile (for sidebar name/branding)
+  const [myBusiness, setMyBusiness] = useState<businessService.MyBusiness | null>(null);
+
+  useEffect(() => {
+    businessService
+      .getMyBusiness()
+      .then(setMyBusiness)
+      .catch(() => {});
+  }, []);
+
+  // News post form state
+  const [newsPosts, setNewsPosts] = useState<newsService.NewsPost[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [postForm, setPostForm] = useState({ title: '', content: '', imageUrl: '' });
+  const [postImageFile, setPostImageFile] = useState<File | null>(null);
+  const [postFormLoading, setPostFormLoading] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
-  const [currentProduct, setCurrentProduct] = useState({
-    name: '',
-    price: '',
-    image: '',
-    link: ''
-  });
+  const toggleProductId = (id: number) => {
+    setSelectedProductIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const fetchMyNews = () => {
+    setNewsLoading(true);
+    newsService
+      .getMyNews({ page: 1, limit: 20 })
+      .then((result) => setNewsPosts(result.data))
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Không thể tải tin tức'))
+      .finally(() => setNewsLoading(false));
+  };
+
+  useEffect(() => {
+    fetchMyNews();
+  }, []);
   
-  // Business products - stored separately from post products
-  const [businessProducts, setBusinessProducts] = useState<any[]>([
-    {
-      id: 1,
-      name: 'Laptop Dell XPS 15',
-      price: '25,990,000đ',
-      image: 'https://images.unsplash.com/photo-1737868131581-6379cdee4ec3?w=400',
-      link: 'https://example.com/laptop',
-      category: 'Điện tử',
-      stock: 15,
-      sales: 28,
-      status: 'active',
-      description: 'Laptop Dell XPS 15 với cấu hình mạnh mẽ, màn hình 15.6 inch 4K'
-    },
-    {
-      id: 2,
-      name: 'iPhone 15 Pro Max',
-      price: '32,000,000đ',
-      image: 'https://images.unsplash.com/photo-1675953935267-e039f13ddd79?w=400',
-      link: 'https://example.com/iphone',
-      category: 'Điện tử',
-      stock: 20,
-      sales: 45,
-      status: 'active',
-      description: 'iPhone 15 Pro Max 256GB chính hãng VN/A, chip A17 Pro'
-    },
-    {
-      id: 3,
-      name: 'Camera Canon EOS R6',
-      price: '45,000,000đ',
-      image: 'https://images.unsplash.com/photo-1579535984712-92fffbbaa266?w=400',
-      link: 'https://example.com/camera',
-      category: 'Điện tử',
-      stock: 8,
-      sales: 12,
-      status: 'active',
-      description: 'Máy ảnh Canon EOS R6 full-frame, quay video 4K 60fps'
+  // Shop (cửa hàng) state
+  const [myShop, setMyShop] = useState<shopService.Shop | null>(null);
+  const [shopLoading, setShopLoading] = useState(true);
+  const [shopForm, setShopForm] = useState({
+    name: '', category: '', shortDescription: '', description: '',
+    phone: '', email: '', website: '', province: '', district: '', address: '',
+    logoUrl: '', coverUrl: '',
+  });
+  const [shopFormLoading, setShopFormLoading] = useState(false);
+  const [shopLogoFile, setShopLogoFile] = useState<File | null>(null);
+  const [shopCoverFile, setShopCoverFile] = useState<File | null>(null);
+
+  const fetchMyShop = () => {
+    setShopLoading(true);
+    shopService
+      .getMyShop()
+      .then((shop) => {
+        setMyShop(shop);
+        if (shop) {
+          setShopForm({
+            name: shop.name,
+            category: shop.category || '',
+            shortDescription: shop.shortDescription || '',
+            description: shop.description || '',
+            phone: shop.phone || '',
+            email: shop.email || '',
+            website: shop.website || '',
+            province: shop.province || '',
+            district: shop.district || '',
+            address: shop.address || '',
+            logoUrl: shop.logoUrl || '',
+            coverUrl: shop.coverUrl || '',
+          });
+        }
+      })
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Không thể tải thông tin cửa hàng'))
+      .finally(() => setShopLoading(false));
+  };
+
+  useEffect(() => {
+    fetchMyShop();
+  }, []);
+
+  const handleSaveShop = async () => {
+    if (!shopForm.name.trim()) {
+      toast.error('Tên cửa hàng không được để trống');
+      return;
     }
-  ]);
+    setShopFormLoading(true);
+    try {
+      let logoUrl = shopForm.logoUrl || undefined;
+      let coverUrl = shopForm.coverUrl || undefined;
+      if (shopLogoFile) logoUrl = await shopService.uploadShopImage(shopLogoFile);
+      if (shopCoverFile) coverUrl = await shopService.uploadShopImage(shopCoverFile);
+
+      const payload = { ...shopForm, logoUrl, coverUrl };
+
+      if (myShop) {
+        const updated = await shopService.updateShop(myShop.id, payload);
+        setMyShop(updated);
+        toast.success('Đã cập nhật cửa hàng');
+      } else {
+        const created = await shopService.createShop(payload);
+        setMyShop(created);
+        toast.success('Đã tạo cửa hàng, vui lòng chờ admin duyệt');
+      }
+      setShopLogoFile(null);
+      setShopCoverFile(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể lưu cửa hàng');
+    } finally {
+      setShopFormLoading(false);
+    }
+  };
+
+  // Products state
+  const [businessProducts, setBusinessProducts] = useState<shopService.Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productForm, setProductForm] = useState({ name: '', category: '', price: '', stock: '', buyUrl: '', imageUrl: '', description: '' });
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [productFormLoading, setProductFormLoading] = useState(false);
+
+  const fetchMyProducts = () => {
+    setProductsLoading(true);
+    shopService
+      .getMyProducts({ limit: 50 })
+      .then((result) => setBusinessProducts(result.data))
+      .catch(() => {})
+      .finally(() => setProductsLoading(false));
+  };
+
+  useEffect(() => {
+    if (myShop?.status === 'APPROVED') fetchMyProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myShop?.status]);
+
+  const emptyProductForm = { name: '', category: '', price: '', stock: '', buyUrl: '', imageUrl: '', description: '' };
+
+  const resetProductForm = () => {
+    setProductForm(emptyProductForm);
+    setProductImageFile(null);
+  };
+
+  const openAddProduct = () => {
+    resetProductForm();
+    setAddProductDialogOpen(true);
+  };
+
+  const openEditProduct = (product: shopService.Product) => {
+    setSelectedProduct(product);
+    setProductForm({
+      name: product.name,
+      category: product.category || '',
+      price: String(product.price),
+      stock: String(product.stock),
+      buyUrl: product.buyUrl || '',
+      imageUrl: product.imageUrl || '',
+      description: product.description || '',
+    });
+    setProductImageFile(null);
+    setEditProductDialogOpen(true);
+  };
+
+  const handleCreateProduct = async () => {
+    if (!productForm.name.trim() || !productForm.price) {
+      toast.error('Vui lòng nhập tên và giá sản phẩm');
+      return;
+    }
+    setProductFormLoading(true);
+    try {
+      let imageUrl = productForm.imageUrl || undefined;
+      if (productImageFile) imageUrl = await shopService.uploadShopImage(productImageFile);
+      await shopService.createProduct({
+        name: productForm.name.trim(),
+        category: productForm.category.trim() || undefined,
+        price: Number(productForm.price),
+        stock: productForm.stock ? Number(productForm.stock) : 0,
+        buyUrl: productForm.buyUrl.trim() || undefined,
+        imageUrl,
+        description: productForm.description.trim() || undefined,
+      });
+      toast.success('Đã thêm sản phẩm, chờ admin duyệt');
+      setAddProductDialogOpen(false);
+      fetchMyProducts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể thêm sản phẩm');
+    } finally {
+      setProductFormLoading(false);
+    }
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!selectedProduct) return;
+    setProductFormLoading(true);
+    try {
+      let imageUrl = productForm.imageUrl || undefined;
+      if (productImageFile) imageUrl = await shopService.uploadShopImage(productImageFile);
+      await shopService.updateProduct(selectedProduct.id, {
+        name: productForm.name.trim(),
+        category: productForm.category.trim() || undefined,
+        price: Number(productForm.price),
+        stock: productForm.stock ? Number(productForm.stock) : 0,
+        buyUrl: productForm.buyUrl.trim() || undefined,
+        imageUrl,
+        description: productForm.description.trim() || undefined,
+      });
+      toast.success('Đã cập nhật sản phẩm');
+      setEditProductDialogOpen(false);
+      fetchMyProducts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể cập nhật sản phẩm');
+    } finally {
+      setProductFormLoading(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!selectedProduct) return;
+    try {
+      await shopService.deleteProduct(selectedProduct.id);
+      toast.success('Đã xóa sản phẩm');
+      fetchMyProducts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể xóa sản phẩm');
+    } finally {
+      setDeleteProductDialogOpen(false);
+      setSelectedProduct(null);
+    }
+  };
+
+  const PRODUCT_STATUS_META: Record<string, { label: string; className: string }> = {
+    PENDING: { label: 'Chờ duyệt', className: 'bg-amber-100 text-amber-800' },
+    APPROVED: { label: 'Đã duyệt', className: 'bg-[#D1FAE5] text-[#065F46]' },
+    REJECTED: { label: 'Từ chối', className: 'bg-[#FEE2E2] text-[#DC2626]' },
+  };
 
   const stats = [
     { label: 'Tổng bài viết', value: '24', icon: FileText, color: 'bg-[#DBEAFE]', iconColor: 'text-[#3B82F6]', growth: '+12%' },
@@ -115,131 +299,146 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
     { label: 'Sản phẩm', value: '45', icon: Package, color: 'bg-[#E0E7FF]', iconColor: 'text-[#6366F1]', growth: '+8' },
   ];
 
-  const newsPosts = [
-    { 
-      id: 1, 
-      title: 'Khuyến mãi cuối năm 2024', 
-      date: '15/10/2025', 
-      views: 1234, 
-      status: 'published',
-      content: 'Giảm giá lên đến 50% cho tất cả sản phẩm công nghệ trong dịp cuối năm! Đừng bỏ lỡ cơ hội sở hữu những sản phẩm chất lượng cao với mức giá ưu đãi nhất trong năm.\n\nChương trình áp dụng từ 01/12/2025 đến 31/12/2025.',
-      hasProduct: true,
-      products: [
-        {
-          id: 1,
-          name: 'Laptop Dell XPS 15',
-          price: '25,990,000đ',
-          image: 'https://images.unsplash.com/photo-1737868131581-6379cdee4ec3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYXB0b3AlMjBjb21wdXRlciUyMHRlY2hub2xvZ3l8ZW58MXx8fHwxNzYwNDY5MTc4fDA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/laptop'
-        },
-        {
-          id: 2,
-          name: 'iPhone 15 Pro Max',
-          price: '32,000,000đ',
-          image: 'https://images.unsplash.com/photo-1675953935267-e039f13ddd79?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWFydHBob25lJTIwbW9iaWxlJTIwcGhvbmV8ZW58MXx8fHwxNzYwNDI1NzY4fDA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/iphone'
-        },
-        {
-          id: 3,
-          name: 'Camera Canon EOS R6',
-          price: '45,000,000đ',
-          image: 'https://images.unsplash.com/photo-1579535984712-92fffbbaa266?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYW1lcmElMjBwaG90b2dyYXBoeXxlbnwxfHx8fDE3NjA0MDk3MzB8MA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/camera'
-        }
-      ]
-    },
-    { 
-      id: 2, 
-      title: 'Ra mắt sản phẩm mới', 
-      date: '14/10/2025', 
-      views: 856, 
-      status: 'published',
-      content: 'Chúng tôi vui mừng giới thiệu dòng sản phẩm mới nhất với công nghệ tiên tiến. Sản phẩm đã được nghiên cứu và phát triển trong suốt 2 năm qua.',
-      hasProduct: false,
-      products: []
-    },
-    { 
-      id: 3, 
-      title: 'Thông báo nghỉ lễ', 
-      date: '13/10/2025', 
-      views: 432, 
-      status: 'draft',
-      content: 'Công ty sẽ nghỉ lễ từ ngày 30/12 đến hết 02/01. Mọi đơn hàng sẽ được xử lý sau kỳ nghỉ lễ.',
-      hasProduct: false,
-      products: []
-    },
-  ];
-
   const sidebarItems = [
     { id: 'overview', icon: TrendingUp, label: 'Tổng quan' },
     { id: 'news', icon: FileText, label: 'Tin tức' },
+    { id: 'shop', icon: Store, label: 'Cửa hàng' },
     { id: 'products', icon: Package, label: 'Sản phẩm' },
     { id: 'analytics', icon: BarChart3, label: 'Thống kê' },
     { id: 'settings', icon: Settings, label: 'Cài đặt' },
   ];
 
-  const handleViewPost = (post: any) => {
+  const handleViewPost = (post: newsService.NewsPost) => {
     setSelectedPost(post);
     setViewDialogOpen(true);
   };
 
-  const handleEditPost = (post: any) => {
+  const handleEditPost = (post: newsService.NewsPost) => {
     setSelectedPost(post);
-    setHasProduct(post.hasProduct || false);
-    setPostProducts(post.products || []);
-    // Pre-select products that are in the post
-    if (post.products && post.products.length > 0) {
-      const productIds = post.products
-        .map((p: any) => {
-          const found = businessProducts.find(bp => bp.name === p.name);
-          return found ? found.id : null;
-        })
-        .filter((id: number | null) => id !== null);
-      setSelectedProductIds(productIds);
-    } else {
-      setSelectedProductIds([]);
-    }
+    setPostForm({ title: post.title || '', content: post.content, imageUrl: post.imageUrl || '' });
+    setPostImageFile(null);
+    setSelectedProductIds((post.products || []).map((p) => p.id));
     setEditDialogOpen(true);
   };
 
-  const handleDeletePost = (post: any) => {
+  const handleDeletePost = (post: newsService.NewsPost) => {
     setSelectedPost(post);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    console.log('Deleting post:', selectedPost);
-    setDeleteDialogOpen(false);
-    setSelectedPost(null);
-  };
-
-  const handleAddProduct = () => {
-    if (currentProduct.name && currentProduct.price && currentProduct.link) {
-      setPostProducts([...postProducts, { ...currentProduct, id: Date.now() }]);
-      setCurrentProduct({ name: '', price: '', image: '', link: '' });
+  const confirmDelete = async () => {
+    if (!selectedPost) return;
+    try {
+      await newsService.deleteNews(selectedPost.id);
+      toast.success('Đã xóa bài viết');
+      fetchMyNews();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể xóa bài viết');
+    } finally {
+      setDeleteDialogOpen(false);
+      setSelectedPost(null);
     }
   };
 
-  const handleRemoveProduct = (productId: number) => {
-    setPostProducts(postProducts.filter(p => p.id !== productId));
-  };
-
-  const resetProductForm = () => {
-    setPostProducts([]);
+  const resetNewsPostForm = () => {
+    setPostForm({ title: '', content: '', imageUrl: '' });
+    setPostImageFile(null);
     setSelectedProductIds([]);
-    setCurrentProduct({ name: '', price: '', image: '', link: '' });
-    setHasProduct(false);
   };
 
-  const handleToggleProduct = (productId: number) => {
-    setSelectedProductIds(prev => {
-      if (prev.includes(productId)) {
-        return prev.filter(id => id !== productId);
-      } else {
-        return [...prev, productId];
-      }
-    });
+  const handleCreatePost = async () => {
+    if (!postForm.content.trim()) {
+      toast.error('Nội dung không được để trống');
+      return;
+    }
+    setPostFormLoading(true);
+    try {
+      let imageUrl = postForm.imageUrl || undefined;
+      if (postImageFile) imageUrl = await newsService.uploadNewsImage(postImageFile);
+      await newsService.createNews({
+        title: postForm.title.trim() || undefined,
+        content: postForm.content.trim(),
+        imageUrl,
+        productIds: selectedProductIds,
+      });
+      toast.success('Đã đăng tin tức');
+      setNewPostDialogOpen(false);
+      resetNewsPostForm();
+      fetchMyNews();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể đăng tin tức');
+    } finally {
+      setPostFormLoading(false);
+    }
   };
+
+  const handleUpdatePost = async () => {
+    if (!selectedPost || !postForm.content.trim()) {
+      toast.error('Nội dung không được để trống');
+      return;
+    }
+    setPostFormLoading(true);
+    try {
+      let imageUrl = postForm.imageUrl || undefined;
+      if (postImageFile) imageUrl = await newsService.uploadNewsImage(postImageFile);
+      await newsService.updateNews(selectedPost.id, {
+        title: postForm.title.trim() || undefined,
+        content: postForm.content.trim(),
+        imageUrl,
+        productIds: selectedProductIds,
+      });
+      toast.success('Đã cập nhật tin tức');
+      setEditDialogOpen(false);
+      resetNewsPostForm();
+      fetchMyNews();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể cập nhật tin tức');
+    } finally {
+      setPostFormLoading(false);
+    }
+  };
+
+  const approvedProductsForPicker = businessProducts.filter((p) => p.status === 'APPROVED');
+
+  const renderProductPicker = () => (
+    <div className="space-y-2">
+      <Label>Gắn sản phẩm vào bài viết (không bắt buộc)</Label>
+      {approvedProductsForPicker.length === 0 ? (
+        <p className="text-sm text-[#6B7280]">Bạn chưa có sản phẩm nào đã được duyệt để gắn vào bài viết.</p>
+      ) : (
+        <div className="max-h-[300px] overflow-y-auto rounded-xl border">
+          {approvedProductsForPicker.map((product, index) => {
+            const checked = selectedProductIds.includes(product.id);
+            return (
+              <label
+                key={product.id}
+                className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-[#F4F6F8] ${index !== approvedProductsForPicker.length - 1 ? 'border-b' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleProductId(product.id)}
+                  className="h-4 w-4 rounded border-[#E5E7EB] text-[#086644] focus:ring-[#086644]"
+                />
+                <div className="h-10 w-10 flex-shrink-0 rounded-lg overflow-hidden bg-[#F9FAFB] border">
+                  {product.imageUrl && (
+                    <ImageWithFallback src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#1F2937] truncate">{product.name}</p>
+                  <p className="text-xs text-[#086644]">{product.price.toLocaleString('vi-VN')}đ</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      )}
+      {selectedProductIds.length > 0 && (
+        <p className="text-xs text-[#6B7280]">Đã chọn {selectedProductIds.length} sản phẩm</p>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex">
@@ -268,7 +467,7 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
               <Building2 className="h-6 w-6 text-white" />
             </div>
             {!sidebarCollapsed && (
-              <span className="text-[#086644] whitespace-nowrap">ABC Tech</span>
+              <span className="text-[#086644] whitespace-nowrap truncate" style={{ maxWidth: '140px' }}>{myBusiness?.name || 'Doanh nghiệp'}</span>
             )}
           </button>
 
@@ -416,7 +615,7 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
                   <CardTitle className="text-[#1F2937]">Quản lý tin tức</CardTitle>
                   <Button 
                     onClick={() => {
-                      resetProductForm();
+                      resetNewsPostForm();
                       setNewPostDialogOpen(true);
                     }}
                     className="bg-[#086644] text-white hover:bg-[#086644]/90"
@@ -426,61 +625,57 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
                   </Button>
                 </CardHeader>
                 <CardContent className="p-6">
+                  {newsLoading ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#086644]" />
+                    </div>
+                  ) : newsPosts.length === 0 ? (
+                    <div className="py-12 text-center text-[#6B7280]">Bạn chưa đăng tin tức nào.</div>
+                  ) : (
                   <div className="overflow-x-auto -mx-6">
                     <div className="inline-block min-w-full align-middle">
                       <div className="overflow-hidden">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-[#6B7280] pl-6">Tiêu đề</TableHead>
+                              <TableHead className="text-[#6B7280] pl-6">Nội dung</TableHead>
                               <TableHead className="text-[#6B7280]">Ngày đăng</TableHead>
-                              <TableHead className="text-[#6B7280]">Lượt xem</TableHead>
-                              <TableHead className="text-[#6B7280]">Trạng thái</TableHead>
+                              <TableHead className="text-[#6B7280]">Tương tác</TableHead>
                               <TableHead className="text-[#6B7280] pr-6">Thao tác</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {newsPosts.map((post) => (
                               <TableRow key={post.id}>
-                                <TableCell className="pl-6">
-                                  <div>
-                                    <p className="text-[#1F2937]">{post.title}</p>
-                                    {post.hasProduct && post.products && post.products.length > 0 && (
-                                      <div className="flex items-center gap-1 mt-1">
-                                        <Package className="h-3 w-3 text-[#086644]" />
-                                        <span className="text-xs text-[#086644]">{post.products.length} sản phẩm đính kèm</span>
-                                      </div>
-                                    )}
-                                  </div>
+                                <TableCell className="pl-6" style={{ maxWidth: '320px' }}>
+                                  {post.title && <p className="text-[#1F2937] truncate">{post.title}</p>}
+                                  <p className="text-sm text-[#6B7280] truncate">{post.content}</p>
                                 </TableCell>
-                                <TableCell className="text-[#6B7280]">{post.date}</TableCell>
-                                <TableCell className="text-[#6B7280]">{post.views}</TableCell>
-                                <TableCell>
-                                  <Badge className={post.status === 'published' ? 'bg-[#D1FAE5] text-[#065F46]' : 'bg-[#FEF3C7] text-[#92400E]'}>
-                                    {post.status === 'published' ? 'Đã đăng' : 'Nháp'}
-                                  </Badge>
+                                <TableCell className="text-[#6B7280]">{new Date(post.createdAt).toLocaleDateString('vi-VN')}</TableCell>
+                                <TableCell className="text-[#6B7280] text-sm">
+                                  {post.likeCount} thích · {post.commentCount} bình luận
                                 </TableCell>
                                 <TableCell className="pr-6">
                                   <div className="flex gap-2">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
                                       className="hover:bg-[#DBEAFE]"
                                       onClick={() => handleViewPost(post)}
                                     >
                                       <Eye className="h-4 w-4 text-[#3B82F6]" />
                                     </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
                                       className="hover:bg-[#DBEAFE]"
                                       onClick={() => handleEditPost(post)}
                                     >
                                       <Edit className="h-4 w-4 text-[#3B82F6]" />
                                     </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
                                       className="hover:bg-[#FEE2E2]"
                                       onClick={() => handleDeletePost(post)}
                                     >
@@ -495,6 +690,135 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
                       </div>
                     </div>
                   </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'shop' && (
+            <div className="space-y-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between border-b">
+                  <div>
+                    <CardTitle className="text-[#1F2937]">Cửa hàng của bạn</CardTitle>
+                    <p className="mt-1 text-sm text-[#6B7280]">Hồ sơ cửa hàng cần được admin duyệt trước khi hiển thị công khai.</p>
+                  </div>
+                  {myShop && (
+                    <Badge
+                      className={
+                        myShop.status === 'APPROVED'
+                          ? 'bg-[#D1FAE5] text-[#065F46]'
+                          : myShop.status === 'REJECTED'
+                            ? 'bg-[#FEE2E2] text-[#DC2626]'
+                            : 'bg-amber-100 text-amber-800'
+                      }
+                    >
+                      {myShop.status === 'APPROVED' ? 'Đã duyệt' : myShop.status === 'REJECTED' ? 'Bị từ chối' : 'Chờ duyệt'}
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent className="p-6">
+                  {shopLoading ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#086644]" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {myShop?.status === 'REJECTED' && myShop.rejectionReason && (
+                        <div className="rounded-xl border bg-[#FEE2E2] p-4 text-sm text-[#DC2626]">
+                          <p className="font-medium">Lý do bị từ chối:</p>
+                          <p>{myShop.rejectionReason}</p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Tên cửa hàng *</Label>
+                          <Input value={shopForm.name} onChange={(e) => setShopForm({ ...shopForm, name: e.target.value })} className="rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Danh mục</Label>
+                          <Input value={shopForm.category} onChange={(e) => setShopForm({ ...shopForm, category: e.target.value })} placeholder="VD: Điện tử" className="rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Số điện thoại</Label>
+                          <Input value={shopForm.phone} onChange={(e) => setShopForm({ ...shopForm, phone: e.target.value })} className="rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Email</Label>
+                          <Input value={shopForm.email} onChange={(e) => setShopForm({ ...shopForm, email: e.target.value })} className="rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Website</Label>
+                          <Input value={shopForm.website} onChange={(e) => setShopForm({ ...shopForm, website: e.target.value })} placeholder="https://..." className="rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tỉnh / Thành phố</Label>
+                          <Input value={shopForm.province} onChange={(e) => setShopForm({ ...shopForm, province: e.target.value })} className="rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Quận / Huyện</Label>
+                          <Input value={shopForm.district} onChange={(e) => setShopForm({ ...shopForm, district: e.target.value })} className="rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Địa chỉ</Label>
+                          <Input value={shopForm.address} onChange={(e) => setShopForm({ ...shopForm, address: e.target.value })} className="rounded-xl" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Mô tả ngắn</Label>
+                        <Input value={shopForm.shortDescription} onChange={(e) => setShopForm({ ...shopForm, shortDescription: e.target.value })} placeholder="Hiển thị ở danh sách cửa hàng" className="rounded-xl" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Mô tả chi tiết</Label>
+                        <Textarea value={shopForm.description} onChange={(e) => setShopForm({ ...shopForm, description: e.target.value })} className="rounded-xl min-h-[100px]" />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Logo</Label>
+                          {shopLogoFile || shopForm.logoUrl ? (
+                            <div className="relative w-fit">
+                              <img src={shopLogoFile ? URL.createObjectURL(shopLogoFile) : shopForm.logoUrl} alt="logo" className="h-20 w-20 rounded-xl object-cover" />
+                              <button type="button" onClick={() => { setShopLogoFile(null); setShopForm({ ...shopForm, logoUrl: '' }); }} className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow">
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed p-3 text-sm text-[#6B7280] hover:bg-[#F4F6F8]">
+                              <Upload className="h-4 w-4" /> Chọn logo
+                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => e.target.files?.[0] && setShopLogoFile(e.target.files[0])} />
+                            </label>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Ảnh bìa</Label>
+                          {shopCoverFile || shopForm.coverUrl ? (
+                            <div className="relative w-fit">
+                              <img src={shopCoverFile ? URL.createObjectURL(shopCoverFile) : shopForm.coverUrl} alt="cover" className="h-20 w-32 rounded-xl object-cover" />
+                              <button type="button" onClick={() => { setShopCoverFile(null); setShopForm({ ...shopForm, coverUrl: '' }); }} className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow">
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed p-3 text-sm text-[#6B7280] hover:bg-[#F4F6F8]">
+                              <Upload className="h-4 w-4" /> Chọn ảnh bìa
+                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => e.target.files?.[0] && setShopCoverFile(e.target.files[0])} />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        <Button onClick={handleSaveShop} disabled={shopFormLoading} className="bg-[#086644] text-white hover:bg-[#086644]/90">
+                          {shopFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                          {myShop ? 'Lưu thay đổi' : 'Tạo cửa hàng'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -502,103 +826,128 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
 
           {activeTab === 'products' && (
             <div className="space-y-6">
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between border-b">
-                  <CardTitle className="text-[#1F2937]">Quản lý sản phẩm</CardTitle>
-                  <Button
-                    onClick={() => setAddProductDialogOpen(true)}
-                    className="bg-[#086644] text-white hover:bg-[#086644]/90"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Thêm sản phẩm
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="overflow-x-auto -mx-6">
-                    <div className="inline-block min-w-full align-middle">
-                      <div className="overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-[#6B7280] pl-6">Sản phẩm</TableHead>
-                              <TableHead className="text-[#6B7280]">Danh mục</TableHead>
-                              <TableHead className="text-[#6B7280]">Giá</TableHead>
-                              <TableHead className="text-[#6B7280]">Kho</TableHead>
-                              <TableHead className="text-[#6B7280]">Đã bán</TableHead>
-                              <TableHead className="text-[#6B7280]">Trạng thái</TableHead>
-                              <TableHead className="text-[#6B7280] pr-6">Thao tác</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {businessProducts.map((product) => (
-                              <TableRow key={product.id}>
-                                <TableCell className="pl-6">
-                                  <div className="flex items-center gap-3">
-                                    <div className="h-12 w-12 rounded-lg overflow-hidden bg-[#F4F6F8] flex-shrink-0">
-                                      {product.image ? (
-                                        <ImageWithFallback 
-                                          src={product.image} 
-                                          alt={product.name}
-                                          className="h-full w-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="h-full w-full flex items-center justify-center">
-                                          <Package className="h-5 w-5 text-[#9CA3AF]" />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className="text-[#1F2937] truncate">{product.name}</p>
-                                      <p className="text-xs text-[#6B7280] truncate">{product.description}</p>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className="bg-[#E0E7FF] text-[#4338CA] border-0">{product.category}</Badge>
-                                </TableCell>
-                                <TableCell className="text-[#6B7280]">{product.price}</TableCell>
-                                <TableCell className="text-[#6B7280]">{product.stock}</TableCell>
-                                <TableCell className="text-[#6B7280]">{product.sales}</TableCell>
-                                <TableCell>
-                                  <Badge className={product.status === 'active' ? 'bg-[#D1FAE5] text-[#065F46]' : 'bg-[#E5E7EB] text-[#6B7280]'}>
-                                    {product.status === 'active' ? 'Hoạt động' : 'Tạm ngừng'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="pr-6">
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedProduct(product);
-                                        setEditProductDialogOpen(true);
-                                      }}
-                                      className="hover:bg-[#DBEAFE]"
-                                    >
-                                      <Pencil className="h-4 w-4 text-[#3B82F6]" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedProduct(product);
-                                        setDeleteProductDialogOpen(true);
-                                      }}
-                                      className="hover:bg-[#FEE2E2]"
-                                    >
-                                      <Trash2 className="h-4 w-4 text-[#DC2626]" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
+              {!shopLoading && myShop?.status !== 'APPROVED' ? (
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-12 text-center space-y-3">
+                    <Store className="h-10 w-10 mx-auto text-[#9CA3AF]" />
+                    <h3 className="text-[#1F2937]">
+                      {!myShop ? 'Bạn cần tạo cửa hàng trước' : myShop.status === 'PENDING' ? 'Cửa hàng đang chờ duyệt' : 'Cửa hàng bị từ chối'}
+                    </h3>
+                    <p className="text-[#6B7280]">
+                      {!myShop
+                        ? 'Vào tab "Cửa hàng" để tạo hồ sơ cửa hàng trước khi thêm sản phẩm.'
+                        : myShop.status === 'PENDING'
+                          ? 'Admin cần duyệt cửa hàng của bạn trước khi bạn có thể thêm sản phẩm.'
+                          : 'Vui lòng chỉnh sửa lại thông tin cửa hàng ở tab "Cửa hàng" và chờ duyệt lại.'}
+                    </p>
+                    <Button variant="outline" onClick={() => setActiveTab('shop')}>
+                      Đi tới tab Cửa hàng
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="flex flex-row items-center justify-between border-b">
+                    <CardTitle className="text-[#1F2937]">Quản lý sản phẩm</CardTitle>
+                    <Button onClick={openAddProduct} className="bg-[#086644] text-white hover:bg-[#086644]/90">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Thêm sản phẩm
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {productsLoading ? (
+                      <div className="flex justify-center py-12">
+                        <Loader2 className="h-6 w-6 animate-spin text-[#086644]" />
+                      </div>
+                    ) : businessProducts.length === 0 ? (
+                      <div className="py-12 text-center text-[#6B7280]">Chưa có sản phẩm nào.</div>
+                    ) : (
+                    <div className="overflow-x-auto -mx-6">
+                      <div className="inline-block min-w-full align-middle">
+                        <div className="overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-[#6B7280] pl-6">Sản phẩm</TableHead>
+                                <TableHead className="text-[#6B7280]">Danh mục</TableHead>
+                                <TableHead className="text-[#6B7280]">Giá</TableHead>
+                                <TableHead className="text-[#6B7280]">Kho</TableHead>
+                                <TableHead className="text-[#6B7280]">Đã bán</TableHead>
+                                <TableHead className="text-[#6B7280]">Trạng thái</TableHead>
+                                <TableHead className="text-[#6B7280] pr-6">Thao tác</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {businessProducts.map((product) => (
+                                <TableRow key={product.id}>
+                                  <TableCell className="pl-6">
+                                    <div className="flex items-center gap-3">
+                                      <div className="h-12 w-12 rounded-lg overflow-hidden bg-[#F4F6F8] flex-shrink-0">
+                                        {product.imageUrl ? (
+                                          <ImageWithFallback
+                                            src={product.imageUrl}
+                                            alt={product.name}
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="h-full w-full flex items-center justify-center">
+                                            <Package className="h-5 w-5 text-[#9CA3AF]" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-[#1F2937] truncate">{product.name}</p>
+                                        {product.status === 'REJECTED' && product.rejectionReason && (
+                                          <p className="text-xs text-[#DC2626] truncate">{product.rejectionReason}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge className="bg-[#E0E7FF] text-[#4338CA] border-0">{product.category || '—'}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-[#6B7280]">{product.price.toLocaleString('vi-VN')}đ</TableCell>
+                                  <TableCell className="text-[#6B7280]">{product.stock}</TableCell>
+                                  <TableCell className="text-[#6B7280]">{product.sales}</TableCell>
+                                  <TableCell>
+                                    <Badge className={PRODUCT_STATUS_META[product.status].className}>
+                                      {PRODUCT_STATUS_META[product.status].label}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="pr-6">
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => openEditProduct(product)}
+                                        className="hover:bg-[#DBEAFE]"
+                                      >
+                                        <Pencil className="h-4 w-4 text-[#3B82F6]" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedProduct(product);
+                                          setDeleteProductDialogOpen(true);
+                                        }}
+                                        className="hover:bg-[#FEE2E2]"
+                                      >
+                                        <Trash2 className="h-4 w-4 text-[#DC2626]" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
@@ -619,108 +968,95 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
       {/* New Post Dialog */}
       <Dialog open={newPostDialogOpen} onOpenChange={(open) => {
         setNewPostDialogOpen(open);
-        if (!open) resetProductForm();
+        if (!open) resetNewsPostForm();
       }}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-[#1F2937]">Đăng tin tức mới</DialogTitle>
-            <DialogDescription>Tạo bài viết tin tức mới với nội dung và sản phẩm đính kèm</DialogDescription>
+            <DialogDescription>Bài viết sẽ hiển thị công khai cho tất cả người dùng.</DialogDescription>
           </DialogHeader>
-          <form className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="news-title">Tiêu đề *</Label>
-              <Input 
-                id="news-title" 
+              <Label htmlFor="news-title">Tiêu đề (không bắt buộc)</Label>
+              <Input
+                id="news-title"
+                value={postForm.title}
+                onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
                 placeholder="Nhập tiêu đề tin tức..."
                 className="rounded-xl"
+                maxLength={255}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="news-content">Nội dung *</Label>
-              <Textarea 
+              <Textarea
                 id="news-content"
+                value={postForm.content}
+                onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
                 placeholder="Nhập nội dung tin tức..."
                 className="rounded-xl min-h-[120px]"
+                maxLength={5000}
               />
             </div>
-
-            {/* Product Section */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <Label>Đính kèm sản phẩm</Label>
-                <Switch checked={hasProduct} onCheckedChange={setHasProduct} />
-              </div>
-
-              {hasProduct && (
-                <div className="space-y-4 border border-[#E5E7EB] rounded-xl p-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm">Chọn sản phẩm từ danh sách</Label>
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                      {businessProducts.map((product) => (
-                        <label
-                          key={product.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                            selectedProductIds.includes(product.id)
-                              ? 'bg-[#E8F5E9] border-[#086644]'
-                              : 'bg-white border-[#E5E7EB] hover:border-[#A8E6CF]'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedProductIds.includes(product.id)}
-                            onChange={() => handleToggleProduct(product.id)}
-                            className="h-4 w-4 rounded border-[#6B7280] text-[#086644] focus:ring-[#086644]"
-                          />
-                          {product.image && (
-                            <ImageWithFallback 
-                              src={product.image} 
-                              alt={product.name}
-                              className="h-12 w-12 rounded object-cover flex-shrink-0"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1F2937] truncate">{product.name}</p>
-                            <p className="text-xs text-[#6B7280]">{product.price}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                    {selectedProductIds.length > 0 && (
-                      <p className="text-xs text-[#086644]">
-                        Đã chọn {selectedProductIds.length} sản phẩm
-                      </p>
-                    )}
-                  </div>
+            <div className="space-y-2">
+              <Label>Ảnh đính kèm (không bắt buộc)</Label>
+              {(postImageFile || postForm.imageUrl) ? (
+                <div className="relative w-fit">
+                  <img
+                    src={postImageFile ? URL.createObjectURL(postImageFile) : postForm.imageUrl}
+                    alt="preview"
+                    className="h-32 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPostImageFile(null);
+                      setPostForm({ ...postForm, imageUrl: '' });
+                    }}
+                    className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed p-4 text-sm text-[#6B7280] hover:bg-[#F4F6F8]">
+                  <Upload className="h-4 w-4" />
+                  Chọn ảnh
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && setPostImageFile(e.target.files[0])}
+                  />
+                </label>
               )}
             </div>
 
+            {renderProductPicker()}
+
             <div className="flex gap-3 pt-4">
-              <Button 
+              <Button
                 type="button"
                 variant="outline"
                 className="flex-1 rounded-xl"
                 onClick={() => {
                   setNewPostDialogOpen(false);
-                  resetProductForm();
+                  resetNewsPostForm();
                 }}
               >
                 Hủy
               </Button>
-              <Button 
-                type="submit"
+              <Button
+                type="button"
+                disabled={postFormLoading}
                 className="flex-1 rounded-xl bg-[#086644] hover:bg-[#086644]/90 text-white"
-                onClick={(e) => {
-                  e.preventDefault();
-                  console.log('Creating post');
-                  setNewPostDialogOpen(false);
-                  resetProductForm();
-                }}
+                onClick={handleCreatePost}
               >
+                {postFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Đăng tin
               </Button>
             </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -728,19 +1064,23 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-[#1F2937]">{selectedPost?.title}</DialogTitle>
+            <DialogTitle className="text-[#1F2937]">{selectedPost?.title || 'Bài viết'}</DialogTitle>
             <DialogDescription>
               <div className="flex items-center gap-3 mt-2">
-                <Badge className={selectedPost?.status === 'published' ? 'bg-[#D1FAE5] text-[#065F46]' : 'bg-[#FEF3C7] text-[#92400E]'}>
-                  {selectedPost?.status === 'published' ? 'Đã đăng' : 'Nháp'}
-                </Badge>
-                <span className="text-sm text-[#6B7280]">{selectedPost?.date}</span>
-                <span className="text-sm text-[#6B7280]">• {selectedPost?.views} lượt xem</span>
+                <span className="text-sm text-[#6B7280]">
+                  {selectedPost && new Date(selectedPost.createdAt).toLocaleDateString('vi-VN')}
+                </span>
+                <span className="text-sm text-[#6B7280]">
+                  • {selectedPost?.likeCount} thích • {selectedPost?.commentCount} bình luận
+                </span>
               </div>
             </DialogDescription>
           </DialogHeader>
           {selectedPost && (
             <div className="space-y-4">
+              {selectedPost.imageUrl && (
+                <img src={selectedPost.imageUrl} alt={selectedPost.title || ''} className="w-full rounded-xl object-cover max-h-[300px]" />
+              )}
               <div className="space-y-2">
                 <Label className="text-sm">Nội dung</Label>
                 <div className="p-4 bg-[#F9FAFB] rounded-xl text-sm text-[#1F2937] whitespace-pre-wrap">
@@ -748,34 +1088,19 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
                 </div>
               </div>
 
-              {selectedPost.hasProduct && selectedPost.products && selectedPost.products.length > 0 && (
+              {selectedPost.products && selectedPost.products.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm">Sản phẩm đính kèm ({selectedPost.products.length})</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedPost.products.map((product: any) => (
-                      <div key={product.id} className="border border-[#E5E7EB] rounded-xl p-3 hover:shadow-sm transition-shadow">
-                        <div className="flex gap-3">
-                          {product.image && (
-                            <ImageWithFallback 
-                              src={product.image} 
-                              alt={product.name}
-                              className="h-16 w-16 rounded-lg object-cover flex-shrink-0"
-                            />
+                  <Label className="text-sm">Sản phẩm đính kèm</Label>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {selectedPost.products.map((product) => (
+                      <div key={product.id} className="flex-shrink-0 w-32 rounded-xl border p-2">
+                        <div className="h-20 w-full rounded-lg overflow-hidden bg-[#F9FAFB] border mb-2">
+                          {product.imageUrl && (
+                            <ImageWithFallback src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1F2937] truncate">{product.name}</p>
-                            <p className="text-xs text-[#086644] mb-2">{product.price}</p>
-                            <a 
-                              href={product.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-[#3B82F6] hover:underline"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              Xem sản phẩm
-                            </a>
-                          </div>
                         </div>
+                        <p className="text-xs text-[#1F2937] truncate">{product.name}</p>
+                        <p className="text-xs text-[#086644]">{product.price.toLocaleString('vi-VN')}đ</p>
                       </div>
                     ))}
                   </div>
@@ -783,7 +1108,7 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
               )}
 
               <div className="flex justify-end pt-4">
-                <Button 
+                <Button
                   variant="outline"
                   className="rounded-xl"
                   onClick={() => setViewDialogOpen(false)}
@@ -799,7 +1124,7 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
       {/* Edit Post Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(open) => {
         setEditDialogOpen(open);
-        if (!open) resetProductForm();
+        if (!open) resetNewsPostForm();
       }}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -807,101 +1132,86 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
             <DialogDescription>Cập nhật thông tin bài viết tin tức</DialogDescription>
           </DialogHeader>
           {selectedPost && (
-            <form className="space-y-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-title">Tiêu đề *</Label>
-                <Input 
-                  id="edit-title" 
-                  defaultValue={selectedPost.title}
+                <Label htmlFor="edit-title">Tiêu đề (không bắt buộc)</Label>
+                <Input
+                  id="edit-title"
+                  value={postForm.title}
+                  onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
                   className="rounded-xl"
+                  maxLength={255}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Nội dung *</Label>
-                <Textarea 
+                <Textarea
                   id="edit-content"
-                  defaultValue={selectedPost.content}
+                  value={postForm.content}
+                  onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
                   className="rounded-xl min-h-[120px]"
+                  maxLength={5000}
                 />
               </div>
-
-              {/* Product Section */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <Label>Đính kèm sản phẩm</Label>
-                  <Switch checked={hasProduct} onCheckedChange={setHasProduct} />
-                </div>
-
-                {hasProduct && (
-                  <div className="space-y-4 border border-[#E5E7EB] rounded-xl p-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm">Chọn sản phẩm từ danh sách</Label>
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {businessProducts.map((product) => (
-                          <label
-                            key={product.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                              selectedProductIds.includes(product.id)
-                                ? 'bg-[#E8F5E9] border-[#086644]'
-                                : 'bg-white border-[#E5E7EB] hover:border-[#A8E6CF]'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedProductIds.includes(product.id)}
-                              onChange={() => handleToggleProduct(product.id)}
-                              className="h-4 w-4 rounded border-[#6B7280] text-[#086644] focus:ring-[#086644]"
-                            />
-                            {product.image && (
-                              <ImageWithFallback 
-                                src={product.image} 
-                                alt={product.name}
-                                className="h-12 w-12 rounded object-cover flex-shrink-0"
-                              />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-[#1F2937] truncate">{product.name}</p>
-                              <p className="text-xs text-[#6B7280]">{product.price}</p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                      {selectedProductIds.length > 0 && (
-                        <p className="text-xs text-[#086644]">
-                          Đã chọn {selectedProductIds.length} sản phẩm
-                        </p>
-                      )}
-                    </div>
+              <div className="space-y-2">
+                <Label>Ảnh đính kèm (không bắt buộc)</Label>
+                {(postImageFile || postForm.imageUrl) ? (
+                  <div className="relative w-fit">
+                    <img
+                      src={postImageFile ? URL.createObjectURL(postImageFile) : postForm.imageUrl}
+                      alt="preview"
+                      className="h-32 rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPostImageFile(null);
+                        setPostForm({ ...postForm, imageUrl: '' });
+                      }}
+                      className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed p-4 text-sm text-[#6B7280] hover:bg-[#F4F6F8]">
+                    <Upload className="h-4 w-4" />
+                    Chọn ảnh
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && setPostImageFile(e.target.files[0])}
+                    />
+                  </label>
                 )}
               </div>
 
+              {renderProductPicker()}
+
               <div className="flex gap-3 pt-4">
-                <Button 
+                <Button
                   type="button"
                   variant="outline"
                   className="flex-1 rounded-xl"
                   onClick={() => {
                     setEditDialogOpen(false);
-                    resetProductForm();
+                    resetNewsPostForm();
                   }}
                 >
                   Hủy
                 </Button>
-                <Button 
-                  type="submit"
+                <Button
+                  type="button"
+                  disabled={postFormLoading}
                   className="flex-1 rounded-xl bg-[#086644] hover:bg-[#086644]/90 text-white"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    console.log('Updating post');
-                    setEditDialogOpen(false);
-                    resetProductForm();
-                  }}
+                  onClick={handleUpdatePost}
                 >
+                  {postFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Lưu thay đổi
                 </Button>
               </div>
-            </form>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -928,53 +1238,63 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
       </AlertDialog>
       
       {/* Add Product Dialog */}
-      <Dialog open={addProductDialogOpen} onOpenChange={setAddProductDialogOpen}>
+      <Dialog open={addProductDialogOpen} onOpenChange={(open) => { setAddProductDialogOpen(open); if (!open) resetProductForm(); }}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Thêm sản phẩm mới</DialogTitle>
-            <DialogDescription>Thêm sản phẩm vào danh mục sản phẩm của doanh nghiệp</DialogDescription>
+            <DialogDescription>Sản phẩm sẽ cần admin duyệt trước khi hiển thị công khai.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="product-name">Tên sản phẩm *</Label>
-                <Input id="product-name" placeholder="VD: iPhone 15 Pro Max" className="rounded-xl" />
+                <Input id="product-name" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} placeholder="VD: iPhone 15 Pro Max" className="rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product-category">Danh mục *</Label>
-                <Input id="product-category" placeholder="VD: Điện tử" className="rounded-xl" />
+                <Label htmlFor="product-category">Danh mục</Label>
+                <Input id="product-category" value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} placeholder="VD: Điện tử" className="rounded-xl" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="product-price">Giá *</Label>
-                <Input id="product-price" placeholder="VD: 32,000,000đ" className="rounded-xl" />
+                <Label htmlFor="product-price">Giá (VNĐ) *</Label>
+                <Input id="product-price" type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} placeholder="VD: 32000000" className="rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product-stock">Số lượng kho *</Label>
-                <Input id="product-stock" type="number" placeholder="VD: 20" className="rounded-xl" />
+                <Label htmlFor="product-stock">Số lượng kho</Label>
+                <Input id="product-stock" type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} placeholder="VD: 20" className="rounded-xl" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="product-image">URL hình ảnh</Label>
-              <Input id="product-image" placeholder="https://..." className="rounded-xl" />
+              <Label>Ảnh sản phẩm</Label>
+              {productImageFile || productForm.imageUrl ? (
+                <div className="relative w-fit">
+                  <img src={productImageFile ? URL.createObjectURL(productImageFile) : productForm.imageUrl} alt="preview" className="h-20 w-20 rounded-xl object-cover" />
+                  <button type="button" onClick={() => { setProductImageFile(null); setProductForm({ ...productForm, imageUrl: '' }); }} className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed p-3 text-sm text-[#6B7280] hover:bg-[#F4F6F8]">
+                  <Upload className="h-4 w-4" /> Chọn ảnh
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => e.target.files?.[0] && setProductImageFile(e.target.files[0])} />
+                </label>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="product-link">Link sản phẩm</Label>
-              <Input id="product-link" placeholder="https://..." className="rounded-xl" />
+              <Label htmlFor="product-link">Link mua hàng</Label>
+              <Input id="product-link" value={productForm.buyUrl} onChange={(e) => setProductForm({ ...productForm, buyUrl: e.target.value })} placeholder="https://..." className="rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="product-description">Mô tả sản phẩm</Label>
-              <Textarea id="product-description" placeholder="Mô tả chi tiết..." className="rounded-xl min-h-[80px]" />
+              <Textarea id="product-description" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} placeholder="Mô tả chi tiết..." className="rounded-xl min-h-[80px]" />
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setAddProductDialogOpen(false)}>
                 Hủy
               </Button>
-              <Button className="flex-1 rounded-xl bg-[#086644] hover:bg-[#086644]/90 text-white" onClick={() => {
-                console.log('Adding product');
-                setAddProductDialogOpen(false);
-              }}>
+              <Button disabled={productFormLoading} className="flex-1 rounded-xl bg-[#086644] hover:bg-[#086644]/90 text-white" onClick={handleCreateProduct}>
+                {productFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Thêm sản phẩm
               </Button>
             </div>
@@ -983,7 +1303,7 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
       </Dialog>
 
       {/* Edit Product Dialog */}
-      <Dialog open={editProductDialogOpen} onOpenChange={setEditProductDialogOpen}>
+      <Dialog open={editProductDialogOpen} onOpenChange={(open) => { setEditProductDialogOpen(open); if (!open) resetProductForm(); }}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Chỉnh sửa sản phẩm</DialogTitle>
@@ -994,72 +1314,53 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-product-name">Tên sản phẩm *</Label>
-                  <Input 
-                    id="edit-product-name" 
-                    defaultValue={selectedProduct.name}
-                    className="rounded-xl" 
-                  />
+                  <Input id="edit-product-name" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="rounded-xl" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-product-category">Danh mục *</Label>
-                  <Input 
-                    id="edit-product-category" 
-                    defaultValue={selectedProduct.category}
-                    className="rounded-xl" 
-                  />
+                  <Label htmlFor="edit-product-category">Danh mục</Label>
+                  <Input id="edit-product-category" value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} className="rounded-xl" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-product-price">Giá *</Label>
-                  <Input 
-                    id="edit-product-price" 
-                    defaultValue={selectedProduct.price}
-                    className="rounded-xl" 
-                  />
+                  <Label htmlFor="edit-product-price">Giá (VNĐ) *</Label>
+                  <Input id="edit-product-price" type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="rounded-xl" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-product-stock">Số lượng kho *</Label>
-                  <Input 
-                    id="edit-product-stock" 
-                    type="number" 
-                    defaultValue={selectedProduct.stock}
-                    className="rounded-xl" 
-                  />
+                  <Label htmlFor="edit-product-stock">Số lượng kho</Label>
+                  <Input id="edit-product-stock" type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} className="rounded-xl" />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-product-image">URL hình ảnh</Label>
-                <Input 
-                  id="edit-product-image" 
-                  defaultValue={selectedProduct.image}
-                  className="rounded-xl" 
-                />
+                <Label>Ảnh sản phẩm</Label>
+                {productImageFile || productForm.imageUrl ? (
+                  <div className="relative w-fit">
+                    <img src={productImageFile ? URL.createObjectURL(productImageFile) : productForm.imageUrl} alt="preview" className="h-20 w-20 rounded-xl object-cover" />
+                    <button type="button" onClick={() => { setProductImageFile(null); setProductForm({ ...productForm, imageUrl: '' }); }} className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed p-3 text-sm text-[#6B7280] hover:bg-[#F4F6F8]">
+                    <Upload className="h-4 w-4" /> Chọn ảnh
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => e.target.files?.[0] && setProductImageFile(e.target.files[0])} />
+                  </label>
+                )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-product-link">Link sản phẩm</Label>
-                <Input 
-                  id="edit-product-link" 
-                  defaultValue={selectedProduct.link}
-                  className="rounded-xl" 
-                />
+                <Label htmlFor="edit-product-link">Link mua hàng</Label>
+                <Input id="edit-product-link" value={productForm.buyUrl} onChange={(e) => setProductForm({ ...productForm, buyUrl: e.target.value })} className="rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-product-description">Mô tả sản phẩm</Label>
-                <Textarea 
-                  id="edit-product-description" 
-                  defaultValue={selectedProduct.description}
-                  className="rounded-xl min-h-[80px]" 
-                />
+                <Textarea id="edit-product-description" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="rounded-xl min-h-[80px]" />
               </div>
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setEditProductDialogOpen(false)}>
                   Hủy
                 </Button>
-                <Button className="flex-1 rounded-xl bg-[#086644] hover:bg-[#086644]/90 text-white" onClick={() => {
-                  console.log('Updating product');
-                  setEditProductDialogOpen(false);
-                }}>
+                <Button disabled={productFormLoading} className="flex-1 rounded-xl bg-[#086644] hover:bg-[#086644]/90 text-white" onClick={handleUpdateProduct}>
+                  {productFormLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Lưu thay đổi
                 </Button>
               </div>
@@ -1079,12 +1380,8 @@ export function BusinessPortal({ onNavigate, onLogout }: BusinessPortalProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Hủy</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                console.log('Deleting product:', selectedProduct);
-                setDeleteProductDialogOpen(false);
-                setSelectedProduct(null);
-              }}
+            <AlertDialogAction
+              onClick={handleDeleteProduct}
               className="rounded-xl bg-[#DC2626] hover:bg-[#DC2626]/90 text-white"
             >
               Xóa sản phẩm

@@ -1,500 +1,404 @@
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, TrendingUp, AlertCircle, Send, Smile, ShoppingBag, Store, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Loader2, Shield, Building2, Send, MoreHorizontal, Check, AlertTriangle, TrendingUp, ShoppingBag, Store } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
-import { Separator } from './ui/separator';
-import { Badge } from './ui/badge';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import * as newsService from '../services/newsService';
+import type { NewsComment, NewsPost } from '../services/newsService';
+import { getScamTypes, type ScamType } from '../services/reportService';
+import { toast } from 'sonner@2.0.3';
+import type { AuthUser } from '../services/authService';
 
-export function NewsPage() {
-  const [likedPosts, setLikedPosts] = useState<number[]>([]);
-  const [commentInputs, setCommentInputs] = useState<{ [key: number]: string }>({});
-  const [showComments, setShowComments] = useState<{ [key: number]: boolean }>({});
-  const [scrollPositions, setScrollPositions] = useState<{ [key: number]: number }>({});
+interface NewsPageProps {
+  user?: AuthUser | null;
+  onNavigate?: (page: string, id?: number) => void;
+}
 
-  const newsPosts = [
-    {
-      id: 1,
-      author: 'Cục Cảnh sát phòng chống tội phạm công nghệ cao',
-      authorAvatar: '🛡️',
-      role: 'Cơ quan chính phủ',
-      time: '2 giờ',
-      content: '⚠️ CẢNH BÁO: Thủ đoạn lừa đảo mới qua tin nhắn Zalo giả mạo ngân hàng!\n\nCác đối tượng lừa đảo đang gửi tin nhắn giả mạo thông báo từ ngân hàng, yêu cầu người dùng cập nhật thông tin hoặc xác minh tài khoản. Khi click vào link, nạn nhân sẽ bị đánh cắp thông tin ngân hàng.\n\n✅ Lưu ý: Ngân hàng KHÔNG BAO GIỜ yêu cầu khách hàng cung cấp OTP, mật khẩu qua tin nhắn hoặc điện thoại.',
-      image: 'security alert',
-      likes: 1234,
-      comments: 89,
-      shares: 456,
-      commentList: [
-        { id: 1, author: 'Phạm Minh Đức', avatar: '👤', content: 'Cảm ơn cơ quan đã cảnh báo kịp thời!', time: '1 giờ' },
-        { id: 2, author: 'Trần Thu Hương', avatar: '👤', content: 'Mình suýt bị lừa rồi, may đọc được bài này!', time: '45 phút' },
-      ],
-      isOfficial: true,
-      hasProduct: false,
-    },
-    {
-      id: 2,
-      author: 'Hiệp hội Doanh nghiệp TP.HCM',
-      authorAvatar: '🏢',
-      role: 'Tổ chức',
-      time: '5 giờ',
-      content: '📢 Danh sách doanh nghiệp uy tín được xác thực tháng 1/2025\n\nChúng tôi vui mừng công bố 156 doanh nghiệp đã hoàn tất quy trình xác thực và được cấp chứng nhận uy tín. Các doanh nghiệp này đã đáp ứng đầy đủ tiêu chuẩn về pháp lý, tài chính và uy tín thương mại.\n\nXem danh sách đầy đủ tại: ChongLuaDaoJP.com/verified',
-      image: null,
-      likes: 567,
-      comments: 34,
-      shares: 123,
-      commentList: [
-        { id: 1, author: 'Võ Thành Công', avatar: '👤', content: 'Công ty mình cũng đang làm hồ sơ xác thực, hy vọng sớm được duyệt!', time: '2 giờ' },
-      ],
-      isOfficial: true,
-    },
-    {
-      id: 3,
-      author: 'Công ty TNHH ABC Tech',
-      authorAvatar: '💼',
-      role: 'Doanh nghiệp đã xác thực',
-      time: '1 ngày',
-      content: '🎉 Khuyến mãi cuối năm - Giảm giá lên đến 50%!\n\nĐừng bỏ lỡ cơ hội sở hữu các sản phẩm công nghệ cao cấp với mức giá ưu đãi nhất trong năm. Sản phẩm chính hãng, bảo hành đầy đủ.\n\n✨ Cấu hình mạnh mẽ\n✨ Thiết kế cao cấp\n✨ Hiệu năng vượt trội\n\n#Sale #CongNghe #ABCTech',
-      image: null,
-      likes: 567,
-      comments: 45,
-      shares: 123,
-      commentList: [
-        { id: 1, author: 'Đỗ Quang Minh', avatar: '👤', content: 'Giá tốt quá, mình đã đặt hàng rồi!', time: '30 phút' },
-      ],
-      isOfficial: false,
-      verified: true,
-      hasProduct: true,
-      products: [
-        {
-          id: 1,
-          name: 'Laptop Dell XPS 15',
-          price: '25,990,000đ',
-          image: 'https://images.unsplash.com/photo-1737868131581-6379cdee4ec3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYXB0b3AlMjBjb21wdXRlciUyMHRlY2hub2xvZ3l8ZW58MXx8fHwxNzYwNDY5MTc4fDA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/laptop'
-        },
-        {
-          id: 2,
-          name: 'iPhone 15 Pro Max',
-          price: '32,000,000đ',
-          image: 'https://images.unsplash.com/photo-1675953935267-e039f13ddd79?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWFydHBob25lJTIwbW9iaWxlJTIwcGhvbmV8ZW58MXx8fHwxNzYwNDI1NzY4fDA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/iphone'
-        },
-        {
-          id: 3,
-          name: 'Sony WH-1000XM5',
-          price: '8,500,000đ',
-          image: 'https://images.unsplash.com/photo-1713618651165-a3cf7f85506c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFkcGhvbmVzJTIwYXVkaW98ZW58MXx8fHwxNzYwNDY0ODI1fDA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/headphones'
-        },
-        {
-          id: 4,
-          name: 'MacBook Pro M3',
-          price: '45,990,000đ',
-          image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWNib29rJTIwbGFwdG9wfGVufDF8fHx8MTc2MDQ2OTE3OHww&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/macbook'
-        },
-        {
-          id: 5,
-          name: 'iPad Pro 12.9"',
-          price: '28,500,000đ',
-          image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0YWJsZXQlMjBpcGFkfGVufDF8fHx8MTc2MDQ2OTE3OHww&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/ipad'
-        },
-        {
-          id: 6,
-          name: 'Apple Watch Ultra 2',
-          price: '21,990,000đ',
-          image: 'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWFydHdhdGNoJTIwd2F0Y2h8ZW58MXx8fHwxNzYwNDY5MTc4fDA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/watch'
-        },
-        {
-          id: 7,
-          name: 'Samsung Galaxy S24 Ultra',
-          price: '29,990,000đ',
-          image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzYW1zdW5nJTIwcGhvbmV8ZW58MXx8fHwxNzYwNDI1NzY4fDA&ixlib=rb-4.1.0&q=80&w=1080',
-          link: 'https://example.com/samsung'
-        }
-      ]
-    },
-    {
-      id: 4,
-      author: 'ChongLuaDaoJP Official',
-      authorAvatar: '🛡️',
-      role: 'Nền tảng chính thức',
-      time: '2 ngày',
-      content: '📊 BÁO CÁO THÁNG 1/2025: Xu hướng lừa đảo trực tuyến\n\nCác hình thức lừa đảo phổ biến nhất:\n• Lừa đảo qua mạng xã hội: 45%\n• Lừa đảo đầu tư tiền ảo: 28%\n• Lừa đảo thương mại điện tử: 18%\n• Các hình thức khác: 9%\n\nTổng số vụ việc được báo cáo: 2,847 vụ\nSố tiền bị lừa đảo ước tính: 127 tỷ VNĐ\n\nHãy luôn cảnh giác và kiểm tra thông tin trước khi giao dịch!',
-      image: 'statistics chart',
-      likes: 2156,
-      comments: 234,
-      shares: 892,
-      commentList: [
-        { id: 1, author: 'Bùi Lan Anh', avatar: '👤', content: 'Con số đáng báo động! Mọi người cần cảnh giác hơn nữa', time: '1 ngày' },
-        { id: 2, author: 'Hoàng Đức Long', avatar: '👤', content: 'Cảm ơn nền tảng đã cung cấp thông tin chi tiết', time: '1 ngày' },
-      ],
-      isOfficial: true,
-      hasProduct: false,
-    },
-  ];
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Vừa xong';
+  if (minutes < 60) return `${minutes} phút`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} giờ`;
+  const days = Math.floor(hours / 24);
+  return `${days} ngày`;
+}
 
-  const trendingTopics = [
-    { title: 'Lừa đảo qua Zalo', posts: 234 },
-    { title: 'Đầu tư tiền ảo', posts: 189 },
-    { title: 'TMĐT giả mạo', posts: 156 },
-    { title: 'Mạo danh ngân hàng', posts: 134 },
-  ];
+function PostCard({
+  post,
+  isLoggedIn,
+  onRequireLogin,
+  onLikeChange,
+  onNavigate,
+}: {
+  post: NewsPost;
+  isLoggedIn: boolean;
+  onRequireLogin: () => void;
+  onLikeChange: (id: number, liked: boolean, likeCount: number) => void;
+  onNavigate?: (page: string, id?: number) => void;
+}) {
+  const [liked, setLiked] = useState(post.likedByMe);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [likeBusy, setLikeBusy] = useState(false);
 
-  const toggleLike = (postId: number) => {
-    if (likedPosts.includes(postId)) {
-      setLikedPosts(likedPosts.filter(id => id !== postId));
-    } else {
-      setLikedPosts([...likedPosts, postId]);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<NewsComment[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
+
+  const isOfficial = post.author.role === 'ADMIN';
+  const isVerifiedBusiness = !!post.author.business?.verifiedBadge;
+  const displayName = post.author.business?.name || post.author.name;
+  const roleLabel = isOfficial ? 'Quản trị viên' : isVerifiedBusiness ? 'Doanh nghiệp đã xác thực' : 'Doanh nghiệp';
+
+  const handleToggleLike = async () => {
+    if (!isLoggedIn) {
+      onRequireLogin();
+      return;
+    }
+    if (likeBusy) return;
+    setLikeBusy(true);
+    try {
+      const result = await newsService.toggleLike(post.id);
+      setLiked(result.liked);
+      setLikeCount(result.likeCount);
+      onLikeChange(post.id, result.liked, result.likeCount);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể thích bài viết');
+    } finally {
+      setLikeBusy(false);
     }
   };
 
-  const toggleComments = (postId: number) => {
-    setShowComments({
-      ...showComments,
-      [postId]: !showComments[postId]
-    });
+  const handleToggleComments = async () => {
+    const next = !showComments;
+    setShowComments(next);
+    if (next && !commentsLoaded) {
+      setCommentsLoading(true);
+      try {
+        const result = await newsService.getNewsComments(post.id);
+        setComments(result.data);
+        setCommentsLoaded(true);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Không thể tải bình luận');
+      } finally {
+        setCommentsLoading(false);
+      }
+    }
   };
 
-  const handleCommentChange = (postId: number, value: string) => {
-    setCommentInputs({
-      ...commentInputs,
-      [postId]: value
-    });
-  };
-
-  const handleCommentSubmit = (postId: number) => {
-    // Handle comment submission
-    console.log('Comment submitted for post', postId, commentInputs[postId]);
-    setCommentInputs({
-      ...commentInputs,
-      [postId]: ''
-    });
-  };
-
-  const scrollProducts = (postId: number, direction: 'left' | 'right') => {
-    const container = document.getElementById(`products-${postId}`);
-    if (container) {
-      const scrollAmount = 200;
-      const newScroll = direction === 'left' 
-        ? container.scrollLeft - scrollAmount 
-        : container.scrollLeft + scrollAmount;
-      container.scrollTo({ left: newScroll, behavior: 'smooth' });
+  const handleSubmitComment = async () => {
+    if (!isLoggedIn) {
+      onRequireLogin();
+      return;
+    }
+    const content = commentInput.trim();
+    if (!content || postingComment) return;
+    setPostingComment(true);
+    try {
+      const comment = await newsService.addComment(post.id, content);
+      setComments((prev) => [...prev, comment]);
+      setCommentCount((c) => c + 1);
+      setCommentInput('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể gửi bình luận');
+    } finally {
+      setPostingComment(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Main Feed */}
-          <div className="lg:col-span-8 space-y-4">
-            {/* Page Header */}
-            <div className="mb-6">
-              <h1 className="text-[#1F2937] mb-2">Tin tức & Cảnh báo</h1>
-              <p className="text-[#6B7280]">Cập nhật thông tin mới nhất về lừa đảo và bảo mật</p>
+    <Card className="overflow-hidden rounded-2xl border-0 shadow-sm">
+      <CardContent className="p-5 sm:p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            <Avatar className="h-10 w-10 flex-shrink-0">
+              {post.author.business?.logoUrl ? (
+                <ImageWithFallback src={post.author.business.logoUrl} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                <AvatarFallback className="bg-gradient-to-br from-[#A8E6CF] to-[#086644] text-white">
+                  {isOfficial ? <Shield className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <p className="truncate font-medium text-[#1F2937]">{displayName}</p>
+                {(isOfficial || isVerifiedBusiness) && (
+                  <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#3B82F6]">
+                    <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-[#9CA3AF]">
+                {roleLabel} · {timeAgo(post.createdAt)}
+              </p>
             </div>
+          </div>
+          <button className="rounded-full p-1 text-[#9CA3AF] hover:bg-[#F4F6F8]">
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+        </div>
 
-            {/* News Feed */}
-            {newsPosts.map((post) => (
-              <Card key={post.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  {/* Post Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-gradient-to-br from-[#A8E6CF] to-[#086644] text-white text-lg">
-                          {post.authorAvatar}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[#1F2937]">{post.author}</span>
-                          {post.isOfficial && (
-                            <Badge className="bg-[#3B82F6] text-white border-0 h-5 px-1.5">
-                              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            </Badge>
-                          )}
-                          {post.verified && !post.isOfficial && (
-                            <Badge className="bg-[#10B981] text-white border-0 h-5 px-1.5 text-xs">✓</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                          <span>{post.role}</span>
-                          <span>•</span>
-                          <span>{post.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-5 w-5 text-[#6B7280]" />
-                    </Button>
-                  </div>
+        {post.title && <h3 className="mt-4 font-medium text-[#1F2937]">{post.title}</h3>}
+        <p className="mt-2 whitespace-pre-wrap text-[#333333]">{post.content}</p>
 
-                  {/* Post Content */}
-                  <div className="mb-3">
-                    <p className="text-[#1F2937] whitespace-pre-line">{post.content}</p>
-                  </div>
+        {post.imageUrl && (
+          <div className="mt-4 overflow-hidden rounded-xl">
+            <ImageWithFallback src={post.imageUrl} alt={post.title || 'Ảnh bài viết'} className="w-full object-cover" style={{ maxHeight: '420px' }} />
+          </div>
+        )}
 
-                  {/* Post Image */}
-                  {post.image && (
-                    <div className="mb-3 -mx-4 rounded-lg overflow-hidden">
-                      <ImageWithFallback
-                        src={`https://source.unsplash.com/800x500/?${post.image}`}
-                        alt={post.content.slice(0, 50)}
-                        className="w-full h-auto"
-                      />
-                    </div>
-                  )}
-
-                  {/* Product Cards - Horizontal Scroll */}
-                  {post.hasProduct && post.products && post.products.length > 0 && (
-                    <div className="mb-3 relative group/carousel">
-                      {/* Scroll Left Button */}
-                      <button
-                        onClick={() => scrollProducts(post.id, 'left')}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+        {post.products && post.products.length > 0 && (
+          <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+            {post.products.map((product) => (
+              <div key={product.id} className="w-44 flex-shrink-0 rounded-xl border overflow-hidden">
+                <div className="h-28 w-full bg-[#F9FAFB]">
+                  <ImageWithFallback src={product.imageUrl || ''} alt={product.name} className="h-full w-full object-cover" />
+                </div>
+                <div className="p-2.5">
+                  <p className="truncate text-sm text-[#1F2937]">{product.name}</p>
+                  <p className="mt-0.5 text-sm text-[#086644]">{product.price.toLocaleString('vi-VN')}đ</p>
+                  <div className="mt-2 space-y-2">
+                    {product.buyUrl ? (
+                      <a href={product.buyUrl} target="_blank" rel="noopener noreferrer" className="block">
+                        <Button size="sm" className="w-full rounded-lg bg-[#086644] text-white hover:bg-[#086644]/90">
+                          <ShoppingBag className="mr-2 h-3.5 w-3.5" />
+                          Mua ngay
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full rounded-lg bg-[#086644] text-white hover:bg-[#086644]/90"
+                        onClick={() => onNavigate?.('shop-detail', product.shopId)}
                       >
-                        <ChevronLeft className="h-5 w-5 text-[#086644]" />
-                      </button>
-
-                      {/* Scroll Right Button */}
-                      <button
-                        onClick={() => scrollProducts(post.id, 'right')}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
-                      >
-                        <ChevronRight className="h-5 w-5 text-[#086644]" />
-                      </button>
-
-                      <div 
-                        id={`products-${post.id}`}
-                        className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide -mx-1 px-1 snap-x snap-mandatory"
-                      >
-                        {post.products.map((product: any) => (
-                          <div
-                            key={product.id}
-                            className="flex-shrink-0 w-44 snap-start"
-                          >
-                            <div className="border border-[#E5E7EB] rounded-xl overflow-hidden bg-white hover:shadow-lg transition-shadow">
-                              <div className="relative bg-[#F9FAFB] h-44 cursor-pointer group">
-                                <ImageWithFallback
-                                  src={product.image}
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div className="p-3">
-                                <p className="text-xs text-[#1F2937] line-clamp-2 mb-1">{product.name}</p>
-                                <p className="text-sm text-[#086644] mb-3">{product.price}</p>
-                                
-                                {/* Action Buttons */}
-                                <div className="flex flex-col gap-2">
-                                  <a
-                                    href={product.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <Button 
-                                      size="sm" 
-                                      className="w-full bg-[#086644] hover:bg-[#086644]/90 text-white py-2 px-3 h-auto text-xs"
-                                    >
-                                      <ShoppingBag className="h-3 w-3 mr-1" />
-                                      Mua ngay
-                                    </Button>
-                                  </a>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    className="w-full border-[#086644] text-[#086644] hover:bg-[#086644]/10 py-2 px-3 h-auto text-xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.open('#shop', '_blank');
-                                    }}
-                                  >
-                                    <Store className="h-3 w-3 mr-1" />
-                                    Xem shop
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Post Stats */}
-                  <div className="flex items-center justify-between text-sm text-[#6B7280] py-2">
-                    <div className="flex items-center gap-1">
-                      <div className="flex -space-x-1">
-                        <div className="h-5 w-5 rounded-full bg-[#3B82F6] flex items-center justify-center text-white text-xs">
-                          👍
-                        </div>
-                      </div>
-                      <span>{post.likes + (likedPosts.includes(post.id) ? 1 : 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <button 
-                        onClick={() => toggleComments(post.id)}
-                        className="hover:underline"
-                      >
-                        {post.comments} bình luận
-                      </button>
-                      <span>{post.shares} chia sẻ</span>
-                    </div>
-                  </div>
-
-                  <Separator className="my-2" />
-
-                  {/* Action Buttons */}
-                  <div className="grid grid-cols-3 gap-2">
+                        <ShoppingBag className="mr-2 h-3.5 w-3.5" />
+                        Mua ngay
+                      </Button>
+                    )}
                     <Button
-                      variant="ghost"
                       size="sm"
-                      onClick={() => toggleLike(post.id)}
-                      className={`rounded-lg ${
-                        likedPosts.includes(post.id)
-                          ? 'text-[#3B82F6] hover:text-[#3B82F6]'
-                          : 'text-[#6B7280] hover:text-[#1F2937]'
-                      }`}
+                      variant="outline"
+                      className="w-full rounded-lg"
+                      onClick={() => onNavigate?.('shop-detail', product.shopId)}
                     >
-                      <ThumbsUp className={`h-5 w-5 mr-2 ${likedPosts.includes(post.id) ? 'fill-current' : ''}`} />
-                      Thích
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleComments(post.id)}
-                      className="text-[#6B7280] hover:text-[#1F2937] rounded-lg"
-                    >
-                      <MessageCircle className="h-5 w-5 mr-2" />
-                      Bình luận
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-[#6B7280] hover:text-[#1F2937] rounded-lg"
-                    >
-                      <Share2 className="h-5 w-5 mr-2" />
-                      Chia sẻ
+                      <Store className="mr-2 h-3.5 w-3.5" />
+                      Xem shop
                     </Button>
                   </div>
-
-                  {/* Comments Section */}
-                  {showComments[post.id] && (
-                    <>
-                      <Separator className="my-3" />
-                      <div className="space-y-3">
-                        {/* Existing Comments */}
-                        {post.commentList.map((comment) => (
-                          <div key={comment.id} className="flex gap-2">
-                            <Avatar className="h-8 w-8 flex-shrink-0">
-                              <AvatarFallback className="bg-[#E5E7EB] text-[#6B7280]">
-                                {comment.avatar}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="bg-[#F0F2F5] rounded-2xl px-3 py-2">
-                                <p className="text-sm text-[#1F2937]">{comment.author}</p>
-                                <p className="text-sm text-[#1F2937]">{comment.content}</p>
-                              </div>
-                              <div className="flex items-center gap-3 mt-1 px-3">
-                                <button className="text-xs text-[#6B7280] hover:underline">Thích</button>
-                                <button className="text-xs text-[#6B7280] hover:underline">Trả lời</button>
-                                <span className="text-xs text-[#6B7280]">{comment.time}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* Comment Input */}
-                        <div className="flex gap-2 pt-2">
-                          <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarFallback className="bg-gradient-to-br from-[#A8E6CF] to-[#086644] text-white">
-                              U
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 flex gap-2">
-                            <div className="flex-1 relative">
-                              <Input
-                                placeholder="Viết bình luận..."
-                                value={commentInputs[post.id] || ''}
-                                onChange={(e) => handleCommentChange(post.id, e.target.value)}
-                                onKeyPress={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleCommentSubmit(post.id);
-                                  }
-                                }}
-                                className="rounded-full bg-[#F0F2F5] border-0 pr-10"
-                              />
-                              <button className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#086644]">
-                                <Smile className="h-5 w-5" />
-                              </button>
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => handleCommentSubmit(post.id)}
-                              disabled={!commentInputs[post.id]?.trim()}
-                              className="rounded-full bg-[#086644] hover:bg-[#086644]/90 px-4"
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
+        )}
 
-          {/* Right Sidebar */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Trending Topics */}
-            <Card className="border-0 shadow-sm sticky top-6">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-4">
+        <div className="mt-4 flex items-center gap-1.5 text-sm text-[#6B7280]">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#3B82F6]">
+            <ThumbsUp className="h-3 w-3 fill-current text-white" />
+          </span>
+          <span>{likeCount}</span>
+          <span className="ml-auto">{commentCount} bình luận</span>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-1 border-t pt-2">
+          <button
+            onClick={handleToggleLike}
+            disabled={likeBusy}
+            className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium hover:bg-[#F4F6F8] ${liked ? 'text-[#086644]' : 'text-[#6B7280]'}`}
+          >
+            <ThumbsUp className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
+            Thích
+          </button>
+          <button
+            onClick={handleToggleComments}
+            className="flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-[#6B7280] hover:bg-[#F4F6F8]"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Bình luận
+          </button>
+        </div>
+
+        {showComments && (
+          <div className="mt-3 space-y-3 border-t pt-2">
+            {commentsLoading && (
+              <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+                <Loader2 className="h-4 w-4 animate-spin" /> Đang tải bình luận...
+              </div>
+            )}
+
+            {!commentsLoading &&
+              comments.map((c) => (
+                <div key={c.id} className="flex items-start gap-2">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarFallback className="bg-[#F4F6F8] text-[#333333]">{c.author.name.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1 rounded-2xl bg-[#F4F6F8] px-3 py-2">
+                    <p className="text-sm font-medium text-[#1F2937]">{c.author.name}</p>
+                    <p className="text-sm text-[#333333]">{c.content}</p>
+                  </div>
+                </div>
+              ))}
+
+            {!commentsLoading && comments.length === 0 && (
+              <p className="text-sm text-[#6B7280]">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+            )}
+
+            {isLoggedIn ? (
+              <div className="flex items-center gap-2 pt-2">
+                <Input
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubmitComment()}
+                  placeholder="Viết bình luận..."
+                  className="rounded-full"
+                  maxLength={1000}
+                />
+                <Button size="icon" onClick={handleSubmitComment} disabled={postingComment || !commentInput.trim()} className="flex-shrink-0 rounded-full bg-[#086644] text-white hover:bg-[#086644]/90">
+                  {postingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+            ) : (
+              <button onClick={onRequireLogin} className="text-sm text-[#086644] hover:underline">
+                Đăng nhập để bình luận
+              </button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function NewsPage({ user, onNavigate }: NewsPageProps) {
+  const [posts, setPosts] = useState<NewsPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [scamTypes, setScamTypes] = useState<ScamType[]>([]);
+
+  const isLoggedIn = !!user;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    newsService
+      .getNewsList({ page: 1, limit: 10 })
+      .then((result) => {
+        if (cancelled) return;
+        setPosts(result.data);
+        setPage(1);
+        setHasMore(result.pagination.page < result.pagination.totalPages);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : 'Không thể tải tin tức');
+      })
+      .finally(() => !cancelled && setLoading(false));
+
+    getScamTypes()
+      .then((types) => !cancelled && setScamTypes(types))
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const result = await newsService.getNewsList({ page: nextPage, limit: 10 });
+      setPosts((prev) => [...prev, ...result.data]);
+      setPage(nextPage);
+      setHasMore(result.pagination.page < result.pagination.totalPages);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể tải thêm tin tức');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const handleRequireLogin = () => {
+    toast.info('Vui lòng đăng nhập để tiếp tục');
+    onNavigate?.('login');
+  };
+
+  const handleLikeChange = (id: number, liked: boolean, likeCount: number) => {
+    setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, likedByMe: liked, likeCount } : p)));
+  };
+
+  return (
+    <div className="bg-[#F4F6F8] px-4 py-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-[#1F2937]">Tin tức & Cảnh báo</h1>
+          <p className="text-[#6B7280]">Cập nhật thông tin mới nhất về lừa đảo và bảo mật</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {/* Main feed */}
+          <div className="space-y-4 md:col-span-2">
+            {loading && (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-[#086644]" />
+              </div>
+            )}
+
+            {!loading && posts.length === 0 && (
+              <Card className="rounded-2xl border-0 shadow-sm">
+                <CardContent className="p-12 text-center text-[#6B7280]">Chưa có tin tức nào được đăng.</CardContent>
+              </Card>
+            )}
+
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} isLoggedIn={isLoggedIn} onRequireLogin={handleRequireLogin} onLikeChange={handleLikeChange} onNavigate={onNavigate} />
+            ))}
+
+            {hasMore && (
+              <div className="flex justify-center pt-2">
+                <Button variant="outline" onClick={handleLoadMore} disabled={loadingMore}>
+                  {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Xem thêm
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <Card className="rounded-2xl border-0 shadow-sm">
+              <CardContent className="p-5">
+                <div className="mb-4 flex items-center gap-2 font-medium text-[#1F2937]">
                   <TrendingUp className="h-5 w-5 text-[#F59E0B]" />
-                  <h3 className="text-[#1F2937]">Chủ đề nổi bật</h3>
+                  Loại lừa đảo cần cảnh giác
                 </div>
                 <div className="space-y-3">
-                  {trendingTopics.map((topic, index) => (
-                    <button
-                      key={index}
-                      className="w-full text-left p-3 rounded-lg hover:bg-[#F0F2F5] transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm text-[#1F2937] mb-1">{topic.title}</p>
-                          <p className="text-xs text-[#6B7280]">{topic.posts} bài viết</p>
-                        </div>
-                      </div>
-                    </button>
+                  {scamTypes.map((type) => (
+                    <div key={type.id} className="text-sm text-[#333333]">
+                      {type.name}
+                    </div>
                   ))}
+                  {scamTypes.length === 0 && <p className="text-sm text-[#9CA3AF]">Đang tải...</p>}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Quick Alert */}
-            <Card className="border-0 shadow-sm bg-[#FEF3C7]">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-sm text-[#92400E] mb-1">Lưu ý an toàn</h4>
-                    <p className="text-xs text-[#92400E]">
-                      Luôn kiểm tra kỹ thông tin trước khi giao dịch. Không chia sẻ OTP, mật khẩu với bất kỳ ai.
-                    </p>
-                  </div>
+            <Card className="rounded-2xl border-0 bg-[#FEF3C7] shadow-sm">
+              <CardContent className="flex gap-3 p-5">
+                <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[#F59E0B]" />
+                <div>
+                  <p className="font-medium text-[#92400E]">Lưu ý an toàn</p>
+                  <p className="mt-1 text-sm text-[#92400E]">
+                    Luôn kiểm tra kỹ thông tin trước khi giao dịch. Không chia sẻ OTP, mật khẩu với bất kỳ ai.
+                  </p>
                 </div>
               </CardContent>
             </Card>

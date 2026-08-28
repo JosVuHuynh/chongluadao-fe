@@ -85,7 +85,7 @@ export default function App() {
       case 'businesses':
         return <TrustedBusinessPage />;
       case 'news':
-        return <NewsPage />;
+        return <NewsPage user={user} onNavigate={handleNavigate} />;
       case 'lookup':
         return <LookupPage initialQuery={lookupQuery} />;
       case 'shop':

@@ -499,7 +499,8 @@ export interface Statistics {
   totalBusinesses: number;
   totalNews: number;
   totalShops: number;
-  totalRevenue: number;
+  pendingShops: number;
+  pendingProducts: number;
   recentActivity: {
     type: string;
     message: string;
